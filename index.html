@@ -3,60 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI가 분석해주는 주식 뉴스, 실시간 시세, 물타기 계산기까지. 직장인을 위한 주식 대시보드 AntDash">
+    <meta property="og:title" content="AntDash - AI 주식 비서">
+    <meta property="og:description" content="내 종목 뉴스 분석부터 수익률 계산까지 한 번에 확인하세요.">
     <title>AntDash | AI 주식 대시보드</title>
     <style>
-        :root { --bg: #f4f7fa; --card: #ffffff; --primary: #2962ff; --text: #1e293b; --red: #f44336; --blue: #2196f3; --gray: #64748b; }
-        body { font-family: 'Pretendard', sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 0; }
-        header { background: #0f172a; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .container { display: grid; grid-template-columns: 280px 1fr 320px; gap: 24px; padding: 24px; max-width: 1500px; margin: auto; }
-        .card { background: var(--card); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 24px; border: 1px solid rgba(0,0,0,0.03); }
-        h3 { margin-top: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; color: #334155; }
+        /* 🎨 테마 변수 설정 (라이트/다크) */
+        :root {
+            --bg: #f4f7fa; --card: #ffffff; --primary: #2962ff; --text: #1e293b; 
+            --sub-text: #64748b; --border: #e2e8f0; --input-bg: #ffffff;
+            --red: #f44336; --blue: #2196f3; --hover: #f1f5f9;
+        }
         
-        .news-item { margin-bottom: 16px; padding: 20px; border-radius: 12px; border: 1px solid #f1f5f9; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; background: white; }
-        .news-item:hover { transform: translateY(-2px); border-color: var(--primary); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
-        .sentiment-bar { height: 4px; width: 100%; position: absolute; top: 0; left: 0; background: #eee; }
+        [data-theme="dark"] {
+            --bg: #0f172a; --card: #1e293b; --primary: #3b82f6; --text: #f1f5f9; 
+            --sub-text: #94a3b8; --border: #334155; --input-bg: #020617;
+            --red: #ff5252; --blue: #448aff; --hover: #334155;
+        }
+
+        body { font-family: 'Pretendard', sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 0; transition: background 0.3s, color 0.3s; }
+        
+        header { background: #0f172a; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .theme-btn { background: none; border: none; font-size: 1.2rem; cursor: pointer; padding: 5px; border-radius: 50%; transition: 0.2s; }
+        .theme-btn:hover { background: rgba(255,255,255,0.1); }
+
+        .container { display: grid; grid-template-columns: 280px 1fr 320px; gap: 24px; padding: 24px; max-width: 1500px; margin: auto; }
+        
+        .card { background: var(--card); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 24px; border: 1px solid var(--border); transition: background 0.3s; }
+        h3 { margin-top: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; color: var(--text); }
+        
+        /* 뉴스 스타일 */
+        .news-item { margin-bottom: 16px; padding: 20px; border-radius: 12px; border: 1px solid var(--border); cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; background: var(--card); }
+        .news-item:hover { transform: translateY(-2px); border-color: var(--primary); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+        .sentiment-bar { height: 4px; width: 100%; position: absolute; top: 0; left: 0; background: var(--border); }
         .sentiment-fill { height: 100%; }
         .news-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; margin-top: 5px; }
         .badge { font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; font-weight: 700; color: white; }
         
+        /* 분석 리포트 */
         .ai-reason { 
-            display: none; 
-            margin-top: 15px; 
-            padding: 15px; 
-            background: #f8fafc; 
-            border-radius: 8px; 
-            font-size: 0.95rem; 
-            color: #334155; 
-            border-left: 3px solid var(--primary);
-            line-height: 1.6;
-            animation: slideDown 0.3s ease-out;
+            display: none; margin-top: 15px; padding: 15px; background: var(--hover); 
+            border-radius: 8px; font-size: 0.95rem; color: var(--text); 
+            border-left: 3px solid var(--primary); line-height: 1.6; animation: slideDown 0.3s ease-out; 
         }
         @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         
-        .view-more-btn { display: inline-block; margin-top: 10px; padding: 8px 16px; background: #e2e8f0; color: #475569; text-decoration: none; border-radius: 6px; font-size: 0.85rem; font-weight: bold; transition: 0.2s; }
-        .view-more-btn:hover { background: #cbd5e1; color: #1e293b; }
-        .click-hint { font-size: 0.8rem; color: #94a3b8; margin-top: 10px; text-align: right; display: flex; justify-content: flex-end; align-items: center; gap: 4px; }
+        .view-more-btn { display: inline-block; margin-top: 10px; padding: 8px 16px; background: var(--border); color: var(--text); text-decoration: none; border-radius: 6px; font-size: 0.85rem; font-weight: bold; transition: 0.2s; }
+        .view-more-btn:hover { opacity: 0.8; }
+        .click-hint { font-size: 0.8rem; color: var(--sub-text); margin-top: 10px; text-align: right; display: flex; justify-content: flex-end; align-items: center; gap: 4px; }
 
-        .index-item, .stock-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 12px; background: #f8fafc; border-radius: 10px; font-size: 0.95rem; }
-        .stock-item { border: 1px solid #e2e8f0; }
+        /* 공통 UI 요소 */
+        .index-item, .stock-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 12px; background: var(--hover); border-radius: 10px; font-size: 0.95rem; color: var(--text); transition: background 0.3s; }
+        .stock-item { border: 1px solid var(--border); }
         .up { color: var(--red); font-weight: bold; }
         .down { color: var(--blue); font-weight: bold; }
-        .btn-del { font-size: 0.9rem; color: #999; cursor: pointer; margin-left: 10px; padding: 5px; }
+        .btn-del { font-size: 0.9rem; color: var(--sub-text); cursor: pointer; margin-left: 10px; padding: 5px; }
         .btn-del:hover { color: var(--red); font-weight: bold; }
+        
         .input-group { margin-bottom: 15px; }
-        input { width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; font-size: 0.95rem; }
+        input { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; box-sizing: border-box; font-size: 0.95rem; background: var(--input-bg); color: var(--text); }
         .btn-primary { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .btn-sm { width: auto; padding: 8px 12px; font-size: 0.9rem; margin-top: 5px; }
 
-        .tabs { display: flex; border-bottom: 2px solid #f1f5f9; margin-bottom: 20px; }
-        .tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; font-weight: bold; color: #94a3b8; transition: 0.2s; }
+        .tabs { display: flex; border-bottom: 2px solid var(--border); margin-bottom: 20px; }
+        .tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; font-weight: bold; color: var(--sub-text); transition: 0.2s; }
         .tab.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         
         .percent-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 10px; }
-        .btn-p { padding: 8px; border: 1px solid #e2e8f0; background: white; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: bold; color: #64748b; }
-        .btn-p:hover { background: #f1f5f9; }
+        .btn-p { padding: 8px; border: 1px solid var(--border); background: var(--input-bg); border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: bold; color: var(--sub-text); }
+        .btn-p:hover { background: var(--hover); }
         .btn-p.plus { color: var(--red); }
         .btn-p.minus { color: var(--blue); }
 
@@ -65,23 +83,29 @@
 </head>
 <body>
 <header>
-    <div style="font-size: 1.5rem; font-weight: 900;">🐜 AntDash <span style="font-size: 0.9rem; opacity: 0.7;">Pro</span></div>
-    <div id="realtime-clock" style="font-family: monospace;">--:--:--</div>
+    <div class="header-left">
+        <div style="font-size: 1.5rem; font-weight: 900;">🐜 AntDash <span style="font-size: 0.9rem; opacity: 0.7;">Pro</span></div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <div id="realtime-clock" style="font-family: monospace;">--:--:--</div>
+        <button class="theme-btn" onclick="toggleTheme()" title="다크 모드 전환">🌙</button>
+    </div>
 </header>
+
 <div class="container">
     <aside>
         <div class="card">
             <h3>📊 주요 지수</h3>
-            <div id="indices-list"><div style="text-align:center; color:#999;">로딩중...</div></div>
+            <div id="indices-list"><div style="text-align:center; color:var(--sub-text);">로딩중...</div></div>
         </div>
         <div class="card">
             <h3>⭐ 관심 종목 (Watchlist)</h3>
             <div id="watchlist-container"></div>
             <div style="margin-top: 15px; display: flex; gap: 5px;">
-                <input type="text" id="new-stock-code" placeholder="종목명 또는 코드 (예: 삼성전자)">
+                <input type="text" id="new-stock-code" placeholder="종목명/코드 (예: 삼성전자)">
                 <button class="btn-primary btn-sm" onclick="addStock()">추가</button>
             </div>
-            <p style="font-size: 0.75rem; color: #999; margin-top: 5px; line-height: 1.4;">
+            <p style="font-size: 0.75rem; color: var(--sub-text); margin-top: 5px; line-height: 1.4;">
                 * 한글 검색 가능 (삼성전자, 카카오 등)<br>
                 * 코드 입력: 005930.KS
             </p>
@@ -89,9 +113,9 @@
     </aside>
     <main>
         <div class="card">
-            <h3>🗞️ AI 뉴스 감성 분석 <span style="font-size:0.8rem; color:#999; font-weight:normal; margin-left:10px;">(클릭하여 분석 보기)</span></h3>
+            <h3>🗞️ AI 뉴스 감성 분석 <span style="font-size:0.8rem; color:var(--sub-text); font-weight:normal; margin-left:10px;">(클릭하여 분석 보기)</span></h3>
             <div id="news-list">
-                <p style="text-align:center; padding: 20px; color: var(--gray);">
+                <p style="text-align:center; padding: 20px; color: var(--sub-text);">
                     🤖 AI가 뉴스를 읽고 분석 중입니다...
                 </p>
             </div>
@@ -114,7 +138,7 @@
                     <input type="number" id="q2" placeholder="추가 매수 수량" style="margin-top:5px;">
                 </div>
                 <button class="btn-primary" onclick="calculateWater()">물타기 계산</button>
-                <div id="res-water" style="margin-top: 15px; padding: 15px; background: #f8fafc; border-radius: 8px; display: none;">
+                <div id="res-water" style="margin-top: 15px; padding: 15px; background: var(--hover); border-radius: 8px; display: none;">
                     <div>예상 평단: <strong id="val-water-price" style="color:var(--primary); font-size:1.1rem;">0</strong>원</div>
                     <div style="font-size:0.9rem; margin-top:5px;">총 수량: <span id="val-water-qty">0</span>주</div>
                 </div>
@@ -126,7 +150,7 @@
                     <input type="number" id="h-qty" placeholder="보유 수량" style="margin-top:5px;">
                 </div>
                 
-                <div style="font-size:0.8rem; color:#64748b; margin-bottom:5px; font-weight:bold;">빠른 목표 설정</div>
+                <div style="font-size:0.8rem; color:var(--sub-text); margin-bottom:5px; font-weight:bold;">빠른 목표 설정</div>
                 <div class="percent-btns">
                     <button class="btn-p plus" onclick="setTargetPercent(5)">+5%</button>
                     <button class="btn-p plus" onclick="setTargetPercent(10)">+10%</button>
@@ -142,7 +166,7 @@
 
                 <button class="btn-primary" onclick="calculateHappy()">수익금 계산</button>
                 
-                <div id="res-happy" style="margin-top: 15px; padding: 15px; background: #f8fafc; border-radius: 8px; display: none;">
+                <div id="res-happy" style="margin-top: 15px; padding: 15px; background: var(--hover); border-radius: 8px; display: none;">
                     <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
                         <span>수익률</span>
                         <strong id="val-happy-percent">0%</strong>
@@ -158,6 +182,30 @@
 </div>
 
 <script>
+    // [다크 모드 로직]
+    function toggleTheme() {
+        const body = document.body;
+        const btn = document.querySelector('.theme-btn');
+        const current = body.getAttribute('data-theme');
+        
+        if (current === 'dark') {
+            body.setAttribute('data-theme', 'light');
+            localStorage.setItem('theme', 'light');
+            btn.innerText = '🌙';
+        } else {
+            body.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark');
+            btn.innerText = '☀️';
+        }
+    }
+    
+    // 초기 테마 설정 (저장된 값 불러오기)
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+        document.body.setAttribute('data-theme', 'dark');
+        document.querySelector('.theme-btn').innerText = '☀️';
+    }
+
     setInterval(() => document.getElementById('realtime-clock').innerText = new Date().toLocaleString(), 1000);
 
     const STOCK_MAP = {
@@ -192,8 +240,8 @@
 
     async function fetchWatchlist() {
         const container = document.getElementById('watchlist-container');
-        if(myStocks.length === 0) { container.innerHTML = "<div style='font-size:0.8rem; text-align:center;'>종목을 추가해보세요</div>"; return; }
-        container.innerHTML = "<div style='font-size:0.8rem; color:#999; text-align:center;'>시세 조회 중...</div>";
+        if(myStocks.length === 0) { container.innerHTML = "<div style='font-size:0.8rem; text-align:center; color:var(--sub-text);'>종목을 추가해보세요</div>"; return; }
+        container.innerHTML = "<div style='font-size:0.8rem; color:var(--sub-text); text-align:center;'>시세 조회 중...</div>";
         try {
             const res = await fetch(`/api/stock?symbols=${myStocks.join(',')}`);
             let data = [];
@@ -210,7 +258,7 @@
                 <div class="stock-item">
                     <div>
                         <div style="font-weight:bold; font-size:0.9rem;">${stock.name}</div>
-                        <div style="font-size:0.7rem; color:#999;">${stock.symbol}</div>
+                        <div style="font-size:0.7rem; color:var(--sub-text);">${stock.symbol}</div>
                     </div>
                     <div style="display:flex; align-items:center;">
                         <span class="${isUp ? 'up' : 'down'}" style="font-weight:bold; margin-right:8px;">${percentDisplay}</span>
@@ -256,12 +304,13 @@
             const data = await res.json();
 
             list.innerHTML = data.map((news, index) => {
-                let color = "#94a3b8"; 
+                let color = "var(--sub-text)"; 
                 let label = "중립";
                 let score = news.score || 50;
                 
-                if(news.sentiment.includes("호재")) { color = "#2563eb"; label = "호재"; } 
-                else if(news.sentiment.includes("악재")) { color = "#dc2626"; label = "악재"; }
+                if(news.sentiment.includes("호재")) { color = "var(--blue)"; label = "호재"; } // 주식에선 파란색이 호재인 경우도 있지만 보통 빨강=상승
+                if(news.sentiment.includes("호재")) { color = "var(--red)"; label = "호재"; } // 한국: 빨강=상승
+                else if(news.sentiment.includes("악재")) { color = "var(--blue)"; label = "악재"; }
 
                 return `
                     <div class="news-item" onclick="toggleNews('reason-${index}')">
@@ -270,10 +319,10 @@
                         </div>
                         <div class="news-header">
                             <span class="badge" style="background:${color};">${label} ${score}점</span>
-                            <span style="font-size: 0.8rem; color: #999;">${news.date}</span>
+                            <span style="font-size: 0.8rem; color: var(--sub-text);">${news.date}</span>
                         </div>
                         <div style="font-weight: bold; font-size: 1.05rem; margin-bottom: 5px;">${news.title}</div>
-                        <div style="font-size: 0.9rem; color: #666;">${news.description}</div>
+                        <div style="font-size: 0.9rem; color: var(--sub-text);">${news.description}</div>
                         
                         <div class="click-hint"><span>🔍 분석 보기</span></div>
                         
@@ -290,7 +339,6 @@
         } catch(e) { console.error(e); }
     }
 
-    // [탭 전환 기능]
     function switchTab(tabName) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -304,7 +352,6 @@
         }
     }
 
-    // [물타기 계산기]
     function calculateWater() {
         const p1 = parseFloat(document.getElementById('p1').value) || 0;
         const q1 = parseFloat(document.getElementById('q1').value) || 0;
@@ -317,13 +364,12 @@
         document.getElementById('res-water').style.display = 'block';
     }
 
-    // [행복회로 계산기]
     function setTargetPercent(percent) {
         const price = parseFloat(document.getElementById('h-price').value) || 0;
         if(price === 0) return alert("평단가를 먼저 입력해주세요!");
         const target = price * (1 + percent/100);
         document.getElementById('h-target').value = Math.round(target);
-        calculateHappy(); // 값 넣고 바로 계산 실행
+        calculateHappy();
     }
 
     function calculateHappy() {
