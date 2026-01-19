@@ -1,59 +1,70 @@
 export default async function handler(req, res) {
-    // 1. 캐싱 및 타임아웃 설정
-    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate');
+    res.setHeader('Cache-Control', 's-maxage=10, stale-while-revalidate'); // 10초 캐싱
     const { symbols } = req.query;
 
-    if (!symbols) return res.status(200).json([]);
+    if (!symbols) return res.json([]);
+
+    // 요청받은 종목 코드들 (예: 005930.KS, 086520.KQ, TSLA)
+    const symbolList = symbols.split(',');
+    const results = [];
 
     try {
-        // 2. 야후 파이낸스 API 주소 (v7 -> v6로 변경 시도, query2 사용)
-        const url = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${symbols}`;
+        // 모든 종목을 하나씩 순서대로 네이버에 물어봅니다.
+        for (const rawSymbol of symbolList) {
+            let code = rawSymbol.trim();
+            let isDomestic = true;
+            
+            // 1. 한국 주식 (.KS, .KQ) 정리
+            if (code.endsWith('.KS') || code.endsWith('.KQ')) {
+                code = code.split('.')[0]; // 점 뒤에 떼버리기 (005930.KS -> 005930)
+            } else {
+                // 점이 없으면 미국 주식으로 간주 (간단한 처리)
+                isDomestic = false;
+            }
 
-        // 3. 5초 안에 응답 없으면 강제 종료 (무한 로딩 방지)
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
+            let url = '';
+            // 2. 네이버 비공개 API 주소 결정
+            if (isDomestic) {
+                // 국내 주식 API
+                url = `https://m.stock.naver.com/api/stock/${code}/basic`;
+            } else {
+                // 해외 주식 API (TSLA -> NAS/TSLA 같은 변환이 필요하지만, 일단 야후 백업이나 간단한 처리)
+                // *해외 주식은 복잡해서 일단 국내 위주로 처리하고 에러 방지*
+                results.push({
+                    symbol: rawSymbol,
+                    name: "해외주식 준비중",
+                    price: 0, change: 0, percent: 0
+                });
+                continue; 
+            }
 
-        const yahooRes = await fetch(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            },
-            signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId); // 성공하면 타이머 해제
+            // 3. 데이터 가져오기
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Network Err');
+            
+            const data = await response.json();
+            
+            // 4. 데이터 정리 (국내 주식 기준)
+            // 네이버는 가격을 "73,000" 처럼 쉼표 넣어서 문자열로 줌 -> 숫자로 변환 필요
+            const price = parseInt(data.closePrice.replace(/,/g, '')); 
+            const prevPrice = parseInt(data.prevClosePrice.replace(/,/g, ''));
+            const change = price - prevPrice;
+            const percent = (change / prevPrice) * 100;
 
-        if (!yahooRes.ok) {
-            throw new Error(`Yahoo API Status: ${yahooRes.status}`);
+            results.push({
+                symbol: rawSymbol, // 원래 요청했던 코드 유지
+                name: data.stockName,
+                price: price,
+                change: change,
+                percent: percent
+            });
         }
-
-        const data = await yahooRes.json();
-        const resultList = data.quoteResponse?.result || [];
-
-        // 4. 데이터 가공
-        const results = resultList.map(item => ({
-            symbol: item.symbol,
-            name: item.shortName || item.longName || item.symbol, 
-            price: item.regularMarketPrice || item.postMarketPrice || 0,
-            change: item.regularMarketChange || 0,
-            percent: item.regularMarketChangePercent || 0
-        }));
 
         res.status(200).json(results);
 
     } catch (error) {
-        console.error("Stock API Error:", error);
-        
-        // ⚠️ [비상 대책] API가 막히면 테스트용 가짜 데이터라도 반환 (화면 확인용)
-        // 실제로는 에러지만, 사용자에게 UI 작동 여부를 보여주기 위함
-        const mockData = symbols.split(',').map(s => ({
-            symbol: s,
-            name: "데이터 로딩 실패 (테스트)",
-            price: 0,
-            change: 0,
-            percent: 0
-        }));
-        
-        // 에러 상황을 알리면서 가짜 데이터 반환
-        res.status(200).json(mockData); 
+        console.error("Naver API Error:", error);
+        // 에러 나면 빈 배열 반환해서 화면 안 깨지게 함
+        res.status(200).json([]);
     }
 }
