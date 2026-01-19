@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-    res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate');
+    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate');
 
     const NAVER_ID = process.env.NAVER_ID;
     const NAVER_SECRET = process.env.NAVER_SECRET;
@@ -63,3 +63,4 @@ export default async function handler(req, res) {
         res.status(500).json({ error: 'News Fetch Failed' });
     }
 }
+
