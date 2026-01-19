@@ -47,13 +47,13 @@
             <h3>⭐ 관심 종목 (Watchlist)</h3>
             <div id="watchlist-container"></div>
             <div style="margin-top: 15px; display: flex; gap: 5px;">
-                <input type="text" id="new-stock-code" placeholder="종목코드 (예: 005930.KS)">
+                <input type="text" id="new-stock-code" placeholder="종목명 또는 코드 (예: 삼성전자)">
                 <button class="btn-primary btn-sm" onclick="addStock()">추가</button>
             </div>
-            <p style="font-size: 0.75rem; color: #999; margin-top: 5px;">
-                * 코스피: .KS / 코스닥: .KQ<br>
-                예) 삼성전자: 005930.KS<br>
-                예) 에코프로: 086520.KQ
+            <p style="font-size: 0.75rem; color: #999; margin-top: 5px; line-height: 1.4;">
+                * 웬만한 종목은 <strong>한글 검색</strong>이 가능합니다.<br>
+                (삼성전자, 카카오, 에코프로, 테슬라 등)<br>
+                * 검색 안 되면 코드로 입력: 005930.KS
             </p>
         </div>
     </aside>
@@ -88,6 +88,34 @@
 <script>
     setInterval(() => document.getElementById('realtime-clock').innerText = new Date().toLocaleString(), 1000);
 
+    // [NEW] 한글 종목명 -> 코드 변환기 (자주 찾는 종목들)
+    const STOCK_MAP = {
+        '삼성전자': '005930.KS',
+        'SK하이닉스': '000660.KS',
+        'LG에너지솔루션': '373220.KS',
+        '삼성바이오로직스': '207940.KS',
+        '현대차': '005380.KS',
+        '기아': '000270.KS',
+        '셀트리온': '068270.KS',
+        'POSCO홀딩스': '005490.KS',
+        'NAVER': '035420.KS', '네이버': '035420.KS',
+        '카카오': '035720.KS',
+        '에코프로비엠': '247540.KQ',
+        '에코프로': '086520.KQ',
+        'HLB': '028300.KQ',
+        '엘앤에프': '066970.KQ',
+        '알테오젠': '196170.KQ',
+        '두산에너빌리티': '034020.KS',
+        '테슬라': 'TSLA',
+        '애플': 'AAPL',
+        '엔비디아': 'NVDA',
+        '마이크로소프트': 'MSFT', '마소': 'MSFT',
+        '구글': 'GOOGL',
+        '아마존': 'AMZN',
+        'SOXL': 'SOXL',
+        'TQQQ': 'TQQQ'
+    };
+
     async function fetchIndices() {
         try {
             const res = await fetch('/api/indices');
@@ -97,6 +125,7 @@
             const items = [
                 { name: '코스피', ...data.kospi },
                 { name: '코스닥', ...data.kosdaq },
+                { name: '나스닥', ...data.nasdaq }, // 나스닥 추가
                 { name: '환율', ...data.exchange }
             ];
 
@@ -114,12 +143,13 @@
     let myStocks = JSON.parse(localStorage.getItem('myStocks')) || ['005930.KS', '000660.KS'];
 
     async function fetchWatchlist() {
+        const container = document.getElementById('watchlist-container');
+        
         if(myStocks.length === 0) {
-            document.getElementById('watchlist-container').innerHTML = "<div style='font-size:0.8rem; text-align:center;'>종목을 추가해보세요</div>";
+            container.innerHTML = "<div style='font-size:0.8rem; text-align:center;'>종목을 추가해보세요</div>";
             return;
         }
         
-        const container = document.getElementById('watchlist-container');
         container.innerHTML = "<div style='font-size:0.8rem; color:#999; text-align:center;'>시세 조회 중...</div>";
 
         try {
@@ -130,12 +160,9 @@
                 data = await res.json();
             }
             
-            // 데이터가 없어도 '내 목록'에 있는 건 강제로라도 표시 (삭제할 수 있게)
             const displayData = myStocks.map(symbol => {
-                // API에서 가져온 정보 중 내 symbol과 맞는 게 있는지 찾기
                 const found = data.find(item => item.symbol === symbol);
                 if (found) return found;
-                // 없으면 에러 객체 생성
                 return { symbol: symbol, name: '로딩 실패', price: 0, change: 0, percent: 0, valid: false };
             });
 
@@ -154,8 +181,8 @@
                 return `
                 <div class="stock-item">
                     <div>
-                        <div style="font-weight:bold; font-size:0.9rem;">${stock.name} (${stock.symbol})</div>
-                        <div style="font-size:0.8rem; color:#666;">${priceDisplay}</div>
+                        <div style="font-weight:bold; font-size:0.9rem;">${stock.name}</div>
+                        <div style="font-size:0.7rem; color:#999;">${stock.symbol}</div>
                     </div>
                     <div style="display:flex; align-items:center;">
                         <span class="${colorClass}" style="font-weight:bold; margin-right:8px;">
@@ -174,9 +201,23 @@
 
     async function addStock() {
         const input = document.getElementById('new-stock-code');
-        const code = input.value.toUpperCase().trim();
-        if(!code) return alert("종목 코드를 입력하세요 (예: 005930.KS)");
-        if(myStocks.includes(code)) return alert("이미 추가된 종목입니다.");
+        let val = input.value.trim(); // 대문자 변환 전 원본
+
+        if(!val) return alert("종목명이나 코드를 입력하세요.");
+
+        // 1. 한글 종목명인지 확인하고 코드로 변환
+        // '삼성'이라고 쳐도 '삼성전자' 못찾는 문제를 방지하기 위해 정확히 일치하는지 확인
+        // (더 발전시키면 '삼성'만 쳐도 추천해줄 수 있지만 지금은 정확히 입력해야 함)
+        if (STOCK_MAP[val]) {
+            val = STOCK_MAP[val];
+        } else if (STOCK_MAP[val.toUpperCase()]) { // 영어 소문자 입력 대응 (tsla -> TSLA)
+            val = STOCK_MAP[val.toUpperCase()];
+        } else {
+            // 변환 실패하면 그냥 입력값 그대로 대문자로 사용 (코드라고 가정)
+            val = val.toUpperCase();
+        }
+
+        if(myStocks.includes(val)) return alert("이미 추가된 종목입니다.");
         
         const btn = document.querySelector('.btn-sm');
         const originalText = btn.innerText;
@@ -184,7 +225,7 @@
         btn.disabled = true;
 
         try {
-            myStocks.push(code);
+            myStocks.push(val);
             localStorage.setItem('myStocks', JSON.stringify(myStocks));
             await fetchWatchlist();
             input.value = '';
@@ -197,7 +238,7 @@
     }
 
     function removeStock(symbol) {
-        if(!confirm(`'${symbol}' 종목을 삭제하시겠습니까?`)) return;
+        if(!confirm(`삭제하시겠습니까?`)) return;
         myStocks = myStocks.filter(s => s !== symbol);
         localStorage.setItem('myStocks', JSON.stringify(myStocks));
         fetchWatchlist();
@@ -231,31 +272,3 @@
                         </div>
                         <div style="font-weight: bold; font-size: 1.05rem; margin-bottom: 5px;">${news.title}</div>
                         <div style="font-size: 0.9rem; color: #666;">${news.description}</div>
-                        <div style="margin-top:8px; font-size:0.75rem; color:${color}; font-weight:bold;">
-                            ${label === '호재' ? '📈 주가 상승 요인' : (label === '악재' ? '📉 주의 필요' : '👀 시장 관망세')}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        } catch(e) { console.error(e); }
-    }
-
-    function calculateAverage() {
-        const p1 = parseFloat(document.getElementById('p1').value) || 0;
-        const q1 = parseFloat(document.getElementById('q1').value) || 0;
-        const p2 = parseFloat(document.getElementById('p2').value) || 0;
-        const q2 = parseFloat(document.getElementById('q2').value) || 0;
-        if((p1*q1 + p2*q2) === 0) return;
-        const total = (p1*q1 + p2*q2) / (q1+q2);
-        document.getElementById('res-price').innerText = Math.round(total).toLocaleString();
-        document.getElementById('calc-result').style.display = 'block';
-    }
-
-    window.onload = function() {
-        fetchIndices();
-        fetchWatchlist();
-        fetchNews();
-    };
-</script>
-</body>
-</html>
