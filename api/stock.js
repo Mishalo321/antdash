@@ -1,70 +1,59 @@
 export default async function handler(req, res) {
-    res.setHeader('Cache-Control', 's-maxage=10, stale-while-revalidate'); // 10초 캐싱
+    res.setHeader('Cache-Control', 's-maxage=10, stale-while-revalidate'); 
     const { symbols } = req.query;
 
     if (!symbols) return res.json([]);
 
-    // 요청받은 종목 코드들 (예: 005930.KS, 086520.KQ, TSLA)
     const symbolList = symbols.split(',');
     const results = [];
 
-    try {
-        // 모든 종목을 하나씩 순서대로 네이버에 물어봅니다.
-        for (const rawSymbol of symbolList) {
-            let code = rawSymbol.trim();
-            let isDomestic = true;
+    // 🛡️ 네이버 차단 방지용 가짜 신분증 (User-Agent)
+    const headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    };
+
+    // 하나씩 처리 (Promise.all로 병렬 처리하면 더 빠름)
+    await Promise.all(symbolList.map(async (rawSymbol) => {
+        let code = rawSymbol.trim();
+        // 점(.) 뒤에 있는 .KS, .KQ 제거
+        if (code.includes('.')) code = code.split('.')[0];
+
+        try {
+            // 네이버 주식 API 호출
+            const url = `https://m.stock.naver.com/api/stock/${code}/basic`;
+            const response = await fetch(url, { headers });
             
-            // 1. 한국 주식 (.KS, .KQ) 정리
-            if (code.endsWith('.KS') || code.endsWith('.KQ')) {
-                code = code.split('.')[0]; // 점 뒤에 떼버리기 (005930.KS -> 005930)
-            } else {
-                // 점이 없으면 미국 주식으로 간주 (간단한 처리)
-                isDomestic = false;
-            }
-
-            let url = '';
-            // 2. 네이버 비공개 API 주소 결정
-            if (isDomestic) {
-                // 국내 주식 API
-                url = `https://m.stock.naver.com/api/stock/${code}/basic`;
-            } else {
-                // 해외 주식 API (TSLA -> NAS/TSLA 같은 변환이 필요하지만, 일단 야후 백업이나 간단한 처리)
-                // *해외 주식은 복잡해서 일단 국내 위주로 처리하고 에러 방지*
-                results.push({
-                    symbol: rawSymbol,
-                    name: "해외주식 준비중",
-                    price: 0, change: 0, percent: 0
-                });
-                continue; 
-            }
-
-            // 3. 데이터 가져오기
-            const response = await fetch(url);
             if (!response.ok) throw new Error('Network Err');
             
             const data = await response.json();
             
-            // 4. 데이터 정리 (국내 주식 기준)
-            // 네이버는 가격을 "73,000" 처럼 쉼표 넣어서 문자열로 줌 -> 숫자로 변환 필요
+            // 데이터 파싱
             const price = parseInt(data.closePrice.replace(/,/g, '')); 
             const prevPrice = parseInt(data.prevClosePrice.replace(/,/g, ''));
             const change = price - prevPrice;
             const percent = (change / prevPrice) * 100;
 
             results.push({
-                symbol: rawSymbol, // 원래 요청했던 코드 유지
+                symbol: rawSymbol,
                 name: data.stockName,
                 price: price,
                 change: change,
-                percent: percent
+                percent: percent,
+                valid: true
+            });
+        } catch (error) {
+            console.error(`Error fetching ${rawSymbol}:`, error);
+            // ⚠️ 에러가 나도 "에러 났다"는 데이터를 넣어줌 (그래야 화면에서 삭제 가능)
+            results.push({
+                symbol: rawSymbol,
+                name: "조회 실패",
+                price: 0,
+                change: 0,
+                percent: 0,
+                valid: false // 실패 표시
             });
         }
+    }));
 
-        res.status(200).json(results);
-
-    } catch (error) {
-        console.error("Naver API Error:", error);
-        // 에러 나면 빈 배열 반환해서 화면 안 깨지게 함
-        res.status(200).json([]);
-    }
+    res.status(200).json(results);
 }
