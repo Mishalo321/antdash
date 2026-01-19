@@ -12,7 +12,7 @@
         .card { background: var(--card); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 24px; border: 1px solid rgba(0,0,0,0.03); }
         h3 { margin-top: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; color: #334155; }
         
-        /* 뉴스 스타일 (업그레이드) */
+        /* 뉴스 카드 스타일 (인터랙티브) */
         .news-item { margin-bottom: 16px; padding: 20px; border-radius: 12px; border: 1px solid #f1f5f9; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; background: white; }
         .news-item:hover { transform: translateY(-2px); border-color: var(--primary); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
         .sentiment-bar { height: 4px; width: 100%; position: absolute; top: 0; left: 0; background: #eee; }
@@ -20,19 +20,38 @@
         .news-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; margin-top: 5px; }
         .badge { font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; font-weight: 700; color: white; }
         
-        /* 숨겨진 분석 박스 스타일 */
+        /* 분석 리포트 (숨겨진 박스) */
         .ai-reason { 
             display: none; /* 기본 숨김 */
             margin-top: 15px; 
             padding: 15px; 
             background: #f8fafc; 
             border-radius: 8px; 
-            font-size: 0.9rem; 
-            color: #475569; 
+            font-size: 0.95rem; 
+            color: #334155; 
             border-left: 3px solid var(--primary);
             line-height: 1.6;
+            animation: slideDown 0.3s ease-out;
         }
-        .ai-reason strong { color: #1e293b; display: block; margin-bottom: 4px; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* 더보기 버튼 스타일 */
+        .view-more-btn {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 8px 16px;
+            background: #e2e8f0;
+            color: #475569;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .view-more-btn:hover { background: #cbd5e1; color: #1e293b; }
+
+        /* 클릭 유도 힌트 */
+        .click-hint { font-size: 0.8rem; color: #94a3b8; margin-top: 10px; text-align: right; display: flex; justify-content: flex-end; align-items: center; gap: 4px; }
 
         /* 기타 스타일 유지 */
         .index-item, .stock-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 12px; background: #f8fafc; border-radius: 10px; font-size: 0.95rem; }
@@ -67,14 +86,14 @@
                 <button class="btn-primary btn-sm" onclick="addStock()">추가</button>
             </div>
             <p style="font-size: 0.75rem; color: #999; margin-top: 5px; line-height: 1.4;">
-                * 웬만한 종목은 <strong>한글 검색</strong> 가능<br>
-                * 검색 안 되면 코드 입력: 005930.KS
+                * 한글 검색 가능 (삼성전자, 카카오 등)<br>
+                * 코드 입력: 005930.KS
             </p>
         </div>
     </aside>
     <main>
         <div class="card">
-            <h3>🗞️ AI 뉴스 감성 분석 <span style="font-size:0.8rem; color:#999; font-weight:normal; margin-left:10px;">(클릭하여 분석 보기)</span></h3>
+            <h3>🗞️ AI 뉴스 감성 분석</h3>
             <div id="news-list">
                 <p style="text-align:center; padding: 20px; color: var(--gray);">
                     🤖 AI가 뉴스를 읽고 분석 중입니다...
@@ -187,14 +206,15 @@
         fetchWatchlist();
     }
 
-    // [핵심] 뉴스 클릭 이벤트 처리 함수
+    // [핵심] 카드 클릭 시 분석 내용 토글 함수
     function toggleNews(id) {
         const el = document.getElementById(id);
-        if (el.style.display === 'block') {
-            el.style.display = 'none';
-        } else {
-            el.style.display = 'block';
-        }
+        const isHidden = el.style.display === 'none' || el.style.display === '';
+        
+        // 모두 닫기 (선택 사항 - 하나씩만 열고 싶으면 주석 해제)
+        // document.querySelectorAll('.ai-reason').forEach(div => div.style.display = 'none');
+
+        el.style.display = isHidden ? 'block' : 'none';
     }
 
     async function fetchNews() {
@@ -223,11 +243,18 @@
                         <div style="font-weight: bold; font-size: 1.05rem; margin-bottom: 5px;">${news.title}</div>
                         <div style="font-size: 0.9rem; color: #666;">${news.description}</div>
                         
-                        <div id="reason-${index}" class="ai-reason">
+                        <div class="click-hint">
+                            <span>🔍 분석 보기</span>
+                        </div>
+                        
+                        <div id="reason-${index}" class="ai-reason" onclick="event.stopPropagation()">
                             <strong>💡 AI 분석 리포트</strong>
-                            ${news.reason || "상세 분석 내용을 불러오는 중입니다..."}
-                            <div style="margin-top:10px; font-size:0.8rem; text-align:right;">
-                                <a href="${news.link}" target="_blank" style="color:${color}; text-decoration:underline;">기사 원문 보기 →</a>
+                            <p style="margin: 5px 0 15px 0;">${news.reason || "상세 분석 내용을 불러오는 중입니다..."}</p>
+                            
+                            <div style="text-align: right;">
+                                <a href="${news.link}" target="_blank" class="view-more-btn">
+                                    📄 기사 원문 보러가기
+                                </a>
                             </div>
                         </div>
                     </div>
