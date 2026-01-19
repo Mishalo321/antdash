@@ -7,44 +7,33 @@
     <style>
         :root { --bg: #f4f7fa; --card: #ffffff; --primary: #2962ff; --text: #1e293b; --red: #f44336; --blue: #2196f3; --gray: #64748b; }
         body { font-family: 'Pretendard', sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 0; }
-        
         header { background: #0f172a; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .container { display: grid; grid-template-columns: 280px 1fr 320px; gap: 24px; padding: 24px; max-width: 1500px; margin: auto; }
-
         .card { background: var(--card); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 24px; border: 1px solid rgba(0,0,0,0.03); }
         h3 { margin-top: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; color: #334155; }
-
-        /* 지수 & 관심종목 스타일 */
         .index-item, .stock-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 12px; background: #f8fafc; border-radius: 10px; font-size: 0.95rem; }
         .stock-item { border: 1px solid #e2e8f0; }
         .up { color: var(--red); font-weight: bold; }
         .down { color: var(--blue); font-weight: bold; }
         .btn-del { font-size: 0.8rem; color: #aaa; cursor: pointer; margin-left: 10px; }
-
-        /* 뉴스 스타일 (업그레이드) */
         .news-item { margin-bottom: 16px; padding: 16px; border-radius: 12px; border: 1px solid #f1f5f9; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
         .news-item:hover { transform: translateY(-2px); border-color: var(--primary); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .sentiment-bar { height: 4px; width: 100%; position: absolute; top: 0; left: 0; background: #eee; }
         .sentiment-fill { height: 100%; }
         .news-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; margin-top: 8px; }
         .badge { font-size: 0.75rem; padding: 3px 8px; border-radius: 4px; font-weight: 700; color: white; }
-
-        /* 입력 폼 스타일 */
         .input-group { margin-bottom: 15px; }
         input { width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; }
         .btn-primary { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .btn-sm { width: auto; padding: 8px 12px; font-size: 0.9rem; margin-top: 5px; }
-
         @media (max-width: 1100px) { .container { grid-template-columns: 1fr; } .container aside, .container section { display: none; } }
     </style>
 </head>
 <body>
-
 <header>
     <div style="font-size: 1.5rem; font-weight: 900;">🐜 AntDash <span style="font-size: 0.9rem; opacity: 0.7;">Pro</span></div>
     <div id="realtime-clock" style="font-family: monospace;">--:--:--</div>
 </header>
-
 <div class="container">
     <aside>
         <div class="card">
@@ -53,11 +42,9 @@
                 <div style="text-align:center; color:#999;">로딩중...</div>
             </div>
         </div>
-
         <div class="card">
             <h3>⭐ 관심 종목 (Watchlist)</h3>
-            <div id="watchlist-container">
-                </div>
+            <div id="watchlist-container"></div>
             <div style="margin-top: 15px; display: flex; gap: 5px;">
                 <input type="text" id="new-stock-code" placeholder="종목코드 (예: 005930.KS)">
                 <button class="btn-primary btn-sm" onclick="addStock()">추가</button>
@@ -69,7 +56,6 @@
             </p>
         </div>
     </aside>
-
     <main>
         <div class="card">
             <h3>🗞️ AI 뉴스 감성 분석</h3>
@@ -80,7 +66,6 @@
             </div>
         </div>
     </main>
-
     <section>
         <div class="card">
             <h3>🧮 물타기 계산기</h3>
@@ -99,19 +84,15 @@
         </div>
     </section>
 </div>
-
 <script>
-    // 1. 시계
     setInterval(() => document.getElementById('realtime-clock').innerText = new Date().toLocaleString(), 1000);
 
-    // 2. 주요 지수 로딩
     async function fetchIndices() {
         try {
             const res = await fetch('/api/indices');
             const data = await res.json();
             const list = document.getElementById('indices-list');
             
-            // 데이터 매핑 (코스피, 코스닥 등)
             const items = [
                 { name: '코스피', ...data.kospi },
                 { name: '코스닥', ...data.kosdaq },
@@ -129,25 +110,32 @@
         } catch(e) { console.error(e); }
     }
 
-    // 3. [NEW] 관심 종목 (Watchlist) 로직
-    let myStocks = JSON.parse(localStorage.getItem('myStocks')) || ['005930.KS', '000660.KS']; // 기본값: 삼성전자, 하이닉스
+    let myStocks = JSON.parse(localStorage.getItem('myStocks')) || ['005930.KS', '000660.KS'];
 
     async function fetchWatchlist() {
         if(myStocks.length === 0) return;
         const container = document.getElementById('watchlist-container');
-        
+        container.innerHTML = "<div style='font-size:0.8rem; color:#999; text-align:center;'>시세 조회 중...</div>";
+
         try {
-            // 새로 만든 api/stock.js 호출
             const res = await fetch(`/api/stock?symbols=${myStocks.join(',')}`);
+            if (!res.ok) throw new Error(`서버 에러 (${res.status})`);
+            
             const data = await res.json();
+            
+            if (data.length === 0) {
+                container.innerHTML = "<div style='font-size:0.8rem; text-align:center;'>데이터 없음 (종목코드 확인 필요)</div>";
+                return;
+            }
 
             container.innerHTML = data.map(stock => {
                 const isUp = stock.change > 0;
+                const priceDisplay = stock.price === 0 ? "조회 불가" : stock.price.toLocaleString() + "원";
                 return `
                 <div class="stock-item">
                     <div>
                         <div style="font-weight:bold; font-size:0.9rem;">${stock.symbol}</div>
-                        <div style="font-size:0.8rem; color:#666;">${stock.price.toLocaleString()}원</div>
+                        <div style="font-size:0.8rem; color:#666;">${priceDisplay}</div>
                     </div>
                     <div style="display:flex; align-items:center;">
                         <span class="${isUp ? 'up' : 'down'}" style="font-weight:bold;">
@@ -157,28 +145,43 @@
                     </div>
                 </div>`;
             }).join('');
-        } catch(e) { console.error(e); }
+        } catch(e) { 
+            console.error(e); 
+            container.innerHTML = `<div style='font-size:0.8rem; color:red; text-align:center;'>로딩 실패: ${e.message}</div>`;
+        }
     }
 
-    function addStock() {
-        const code = document.getElementById('new-stock-code').value.toUpperCase().trim();
+    async function addStock() {
+        const input = document.getElementById('new-stock-code');
+        const code = input.value.toUpperCase().trim();
         if(!code) return alert("종목 코드를 입력하세요 (예: 005930.KS)");
         if(myStocks.includes(code)) return alert("이미 추가된 종목입니다.");
         
-        myStocks.push(code);
-        localStorage.setItem('myStocks', JSON.stringify(myStocks)); // 저장
-        document.getElementById('new-stock-code').value = '';
-        fetchWatchlist();
+        const btn = document.querySelector('.btn-sm');
+        const originalText = btn.innerText;
+        btn.innerText = "⏳";
+        btn.disabled = true;
+
+        try {
+            myStocks.push(code);
+            localStorage.setItem('myStocks', JSON.stringify(myStocks));
+            await fetchWatchlist();
+            input.value = '';
+        } catch (e) {
+            alert("종목 추가 중 오류가 발생했습니다.");
+        } finally {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
     }
 
     function removeStock(symbol) {
         myStocks = myStocks.filter(s => s !== symbol);
-        localStorage.setItem('myStocks', JSON.stringify(myStocks)); // 저장
+        localStorage.setItem('myStocks', JSON.stringify(myStocks));
         fetchWatchlist();
         if(myStocks.length === 0) document.getElementById('watchlist-container').innerHTML = "<div style='font-size:0.8rem; text-align:center;'>종목을 추가해보세요</div>";
     }
 
-    // 4. [NEW] AI 뉴스 분석 (점수판)
     async function fetchNews() {
         const list = document.getElementById('news-list');
         try {
@@ -190,7 +193,6 @@
                 let label = "중립";
                 let score = news.score || 50;
                 
-                // 점수 기반 색상 및 라벨
                 if(news.sentiment.includes("호재")) {
                     color = "#2563eb"; label = "호재";
                 } else if(news.sentiment.includes("악재")) {
@@ -217,7 +219,6 @@
         } catch(e) { console.error(e); }
     }
 
-    // 물타기 계산기
     function calculateAverage() {
         const p1 = parseFloat(document.getElementById('p1').value) || 0;
         const q1 = parseFloat(document.getElementById('q1').value) || 0;
@@ -229,7 +230,6 @@
         document.getElementById('calc-result').style.display = 'block';
     }
 
-    // 초기 실행
     window.onload = function() {
         fetchIndices();
         fetchWatchlist();
