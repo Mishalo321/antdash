@@ -1,3 +1,14 @@
+// api/news.js
+
+export default async function handler(req, res) {
+    // 👇 [추가] 이 한 줄이 핵심입니다! 
+    // 설명: "브라우저(Vercel)야, 이 결과를 60초(1분) 동안 기억해두고 재사용해!"
+    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate');
+
+    // ... (아래는 기존 코드 그대로) ...
+    const NAVER_ID = process.env.NAVER_ID; 
+    // ...
+
 // 파일 경로: api/news.js
 export default async function handler(req, res) {
     // Vercel 설정에서 키를 몰래 가져옵니다. (코드에 직접 적지 않음!)
