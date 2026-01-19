@@ -12,7 +12,6 @@
         .card { background: var(--card); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 24px; border: 1px solid rgba(0,0,0,0.03); }
         h3 { margin-top: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; color: #334155; }
         
-        /* 뉴스 카드 스타일 (인터랙티브) */
         .news-item { margin-bottom: 16px; padding: 20px; border-radius: 12px; border: 1px solid #f1f5f9; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; background: white; }
         .news-item:hover { transform: translateY(-2px); border-color: var(--primary); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
         .sentiment-bar { height: 4px; width: 100%; position: absolute; top: 0; left: 0; background: #eee; }
@@ -20,9 +19,8 @@
         .news-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; margin-top: 5px; }
         .badge { font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; font-weight: 700; color: white; }
         
-        /* 분석 리포트 (숨겨진 박스) */
         .ai-reason { 
-            display: none; /* 기본 숨김 */
+            display: none; 
             margin-top: 15px; 
             padding: 15px; 
             background: #f8fafc; 
@@ -35,25 +33,10 @@
         }
         @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* 더보기 버튼 스타일 */
-        .view-more-btn {
-            display: inline-block;
-            margin-top: 10px;
-            padding: 8px 16px;
-            background: #e2e8f0;
-            color: #475569;
-            text-decoration: none;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            font-weight: bold;
-            transition: 0.2s;
-        }
+        .view-more-btn { display: inline-block; margin-top: 10px; padding: 8px 16px; background: #e2e8f0; color: #475569; text-decoration: none; border-radius: 6px; font-size: 0.85rem; font-weight: bold; transition: 0.2s; }
         .view-more-btn:hover { background: #cbd5e1; color: #1e293b; }
-
-        /* 클릭 유도 힌트 */
         .click-hint { font-size: 0.8rem; color: #94a3b8; margin-top: 10px; text-align: right; display: flex; justify-content: flex-end; align-items: center; gap: 4px; }
 
-        /* 기타 스타일 유지 */
         .index-item, .stock-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 12px; background: #f8fafc; border-radius: 10px; font-size: 0.95rem; }
         .stock-item { border: 1px solid #e2e8f0; }
         .up { color: var(--red); font-weight: bold; }
@@ -61,9 +44,22 @@
         .btn-del { font-size: 0.9rem; color: #999; cursor: pointer; margin-left: 10px; padding: 5px; }
         .btn-del:hover { color: var(--red); font-weight: bold; }
         .input-group { margin-bottom: 15px; }
-        input { width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; }
+        input { width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; font-size: 0.95rem; }
         .btn-primary { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .btn-sm { width: auto; padding: 8px 12px; font-size: 0.9rem; margin-top: 5px; }
+
+        .tabs { display: flex; border-bottom: 2px solid #f1f5f9; margin-bottom: 20px; }
+        .tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; font-weight: bold; color: #94a3b8; transition: 0.2s; }
+        .tab.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .percent-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 10px; }
+        .btn-p { padding: 8px; border: 1px solid #e2e8f0; background: white; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: bold; color: #64748b; }
+        .btn-p:hover { background: #f1f5f9; }
+        .btn-p.plus { color: var(--red); }
+        .btn-p.minus { color: var(--blue); }
+
         @media (max-width: 1100px) { .container { grid-template-columns: 1fr; } .container aside, .container section { display: none; } }
     </style>
 </head>
@@ -93,7 +89,7 @@
     </aside>
     <main>
         <div class="card">
-            <h3>🗞️ AI 뉴스 감성 분석</h3>
+            <h3>🗞️ AI 뉴스 감성 분석 <span style="font-size:0.8rem; color:#999; font-weight:normal; margin-left:10px;">(클릭하여 분석 보기)</span></h3>
             <div id="news-list">
                 <p style="text-align:center; padding: 20px; color: var(--gray);">
                     🤖 AI가 뉴스를 읽고 분석 중입니다...
@@ -103,18 +99,59 @@
     </main>
     <section>
         <div class="card">
-            <h3>🧮 물타기 계산기</h3>
-            <div class="input-group">
-                <input type="number" id="p1" placeholder="기존 평단가">
-                <input type="number" id="q1" placeholder="보유 수량" style="margin-top:5px;">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('water')">💧 물타기</div>
+                <div class="tab" onclick="switchTab('happy')">🎢 행복회로</div>
             </div>
-            <div class="input-group">
-                <input type="number" id="p2" placeholder="추가 매수 평단가">
-                <input type="number" id="q2" placeholder="추가 매수 수량" style="margin-top:5px;">
+
+            <div id="tab-water" class="tab-content active">
+                <div class="input-group">
+                    <input type="number" id="p1" placeholder="보유 평단가">
+                    <input type="number" id="q1" placeholder="보유 수량" style="margin-top:5px;">
+                </div>
+                <div class="input-group">
+                    <input type="number" id="p2" placeholder="추가 매수 평단가">
+                    <input type="number" id="q2" placeholder="추가 매수 수량" style="margin-top:5px;">
+                </div>
+                <button class="btn-primary" onclick="calculateWater()">물타기 계산</button>
+                <div id="res-water" style="margin-top: 15px; padding: 15px; background: #f8fafc; border-radius: 8px; display: none;">
+                    <div>예상 평단: <strong id="val-water-price" style="color:var(--primary); font-size:1.1rem;">0</strong>원</div>
+                    <div style="font-size:0.9rem; margin-top:5px;">총 수량: <span id="val-water-qty">0</span>주</div>
+                </div>
             </div>
-            <button class="btn-primary" onclick="calculateAverage()">계산하기</button>
-            <div id="calc-result" style="margin-top: 15px; padding: 10px; background: #f8fafc; border-radius: 8px; display: none;">
-                <strong>최종 평단: <span id="res-price">0</span>원</strong>
+
+            <div id="tab-happy" class="tab-content">
+                <div class="input-group">
+                    <input type="number" id="h-price" placeholder="내 평단가 (매수가)">
+                    <input type="number" id="h-qty" placeholder="보유 수량" style="margin-top:5px;">
+                </div>
+                
+                <div style="font-size:0.8rem; color:#64748b; margin-bottom:5px; font-weight:bold;">빠른 목표 설정</div>
+                <div class="percent-btns">
+                    <button class="btn-p plus" onclick="setTargetPercent(5)">+5%</button>
+                    <button class="btn-p plus" onclick="setTargetPercent(10)">+10%</button>
+                    <button class="btn-p plus" onclick="setTargetPercent(30)">상한가</button>
+                    <button class="btn-p minus" onclick="setTargetPercent(-5)">-5%</button>
+                    <button class="btn-p minus" onclick="setTargetPercent(-10)">-10%</button>
+                    <button class="btn-p minus" onclick="setTargetPercent(-30)">하한가</button>
+                </div>
+
+                <div class="input-group">
+                    <input type="number" id="h-target" placeholder="목표 매도가 (직접 입력)">
+                </div>
+
+                <button class="btn-primary" onclick="calculateHappy()">수익금 계산</button>
+                
+                <div id="res-happy" style="margin-top: 15px; padding: 15px; background: #f8fafc; border-radius: 8px; display: none;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <span>수익률</span>
+                        <strong id="val-happy-percent">0%</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span>예상 손익</span>
+                        <strong id="val-happy-won" style="font-size:1.1rem;">0원</strong>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
@@ -206,14 +243,9 @@
         fetchWatchlist();
     }
 
-    // [핵심] 카드 클릭 시 분석 내용 토글 함수
     function toggleNews(id) {
         const el = document.getElementById(id);
         const isHidden = el.style.display === 'none' || el.style.display === '';
-        
-        // 모두 닫기 (선택 사항 - 하나씩만 열고 싶으면 주석 해제)
-        // document.querySelectorAll('.ai-reason').forEach(div => div.style.display = 'none');
-
         el.style.display = isHidden ? 'block' : 'none';
     }
 
@@ -243,18 +275,13 @@
                         <div style="font-weight: bold; font-size: 1.05rem; margin-bottom: 5px;">${news.title}</div>
                         <div style="font-size: 0.9rem; color: #666;">${news.description}</div>
                         
-                        <div class="click-hint">
-                            <span>🔍 분석 보기</span>
-                        </div>
+                        <div class="click-hint"><span>🔍 분석 보기</span></div>
                         
                         <div id="reason-${index}" class="ai-reason" onclick="event.stopPropagation()">
                             <strong>💡 AI 분석 리포트</strong>
                             <p style="margin: 5px 0 15px 0;">${news.reason || "상세 분석 내용을 불러오는 중입니다..."}</p>
-                            
                             <div style="text-align: right;">
-                                <a href="${news.link}" target="_blank" class="view-more-btn">
-                                    📄 기사 원문 보러가기
-                                </a>
+                                <a href="${news.link}" target="_blank" class="view-more-btn">📄 기사 원문 보러가기</a>
                             </div>
                         </div>
                     </div>
@@ -263,15 +290,64 @@
         } catch(e) { console.error(e); }
     }
 
-    function calculateAverage() {
+    // [탭 전환 기능]
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        if(tabName === 'water') {
+            document.querySelectorAll('.tab')[0].classList.add('active');
+            document.getElementById('tab-water').classList.add('active');
+        } else {
+            document.querySelectorAll('.tab')[1].classList.add('active');
+            document.getElementById('tab-happy').classList.add('active');
+        }
+    }
+
+    // [물타기 계산기]
+    function calculateWater() {
         const p1 = parseFloat(document.getElementById('p1').value) || 0;
         const q1 = parseFloat(document.getElementById('q1').value) || 0;
         const p2 = parseFloat(document.getElementById('p2').value) || 0;
         const q2 = parseFloat(document.getElementById('q2').value) || 0;
         if((p1*q1 + p2*q2) === 0) return;
         const total = (p1*q1 + p2*q2) / (q1+q2);
-        document.getElementById('res-price').innerText = Math.round(total).toLocaleString();
-        document.getElementById('calc-result').style.display = 'block';
+        document.getElementById('val-water-price').innerText = Math.round(total).toLocaleString();
+        document.getElementById('val-water-qty').innerText = (q1+q2).toLocaleString();
+        document.getElementById('res-water').style.display = 'block';
+    }
+
+    // [행복회로 계산기]
+    function setTargetPercent(percent) {
+        const price = parseFloat(document.getElementById('h-price').value) || 0;
+        if(price === 0) return alert("평단가를 먼저 입력해주세요!");
+        const target = price * (1 + percent/100);
+        document.getElementById('h-target').value = Math.round(target);
+        calculateHappy(); // 값 넣고 바로 계산 실행
+    }
+
+    function calculateHappy() {
+        const price = parseFloat(document.getElementById('h-price').value) || 0;
+        const qty = parseFloat(document.getElementById('h-qty').value) || 0;
+        const target = parseFloat(document.getElementById('h-target').value) || 0;
+        
+        if(price === 0 || qty === 0 || target === 0) return;
+
+        const totalBuy = price * qty;
+        const totalSell = target * qty;
+        const profit = totalSell - totalBuy;
+        const percent = ((target - price) / price) * 100;
+
+        const resDiv = document.getElementById('res-happy');
+        const resPercent = document.getElementById('val-happy-percent');
+        const resWon = document.getElementById('val-happy-won');
+
+        resDiv.style.display = 'block';
+        resPercent.innerText = (percent > 0 ? '+' : '') + percent.toFixed(2) + '%';
+        resPercent.style.color = percent > 0 ? 'var(--red)' : 'var(--blue)';
+        
+        resWon.innerText = (profit > 0 ? '+' : '') + Math.round(profit).toLocaleString() + "원";
+        resWon.style.color = profit > 0 ? 'var(--red)' : 'var(--blue)';
     }
 
     window.onload = function() {
