@@ -11,18 +11,36 @@
         .container { display: grid; grid-template-columns: 280px 1fr 320px; gap: 24px; padding: 24px; max-width: 1500px; margin: auto; }
         .card { background: var(--card); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 24px; border: 1px solid rgba(0,0,0,0.03); }
         h3 { margin-top: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; color: #334155; }
+        
+        /* 뉴스 스타일 (업그레이드) */
+        .news-item { margin-bottom: 16px; padding: 20px; border-radius: 12px; border: 1px solid #f1f5f9; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; background: white; }
+        .news-item:hover { transform: translateY(-2px); border-color: var(--primary); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+        .sentiment-bar { height: 4px; width: 100%; position: absolute; top: 0; left: 0; background: #eee; }
+        .sentiment-fill { height: 100%; }
+        .news-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; margin-top: 5px; }
+        .badge { font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; font-weight: 700; color: white; }
+        
+        /* 숨겨진 분석 박스 스타일 */
+        .ai-reason { 
+            display: none; /* 기본 숨김 */
+            margin-top: 15px; 
+            padding: 15px; 
+            background: #f8fafc; 
+            border-radius: 8px; 
+            font-size: 0.9rem; 
+            color: #475569; 
+            border-left: 3px solid var(--primary);
+            line-height: 1.6;
+        }
+        .ai-reason strong { color: #1e293b; display: block; margin-bottom: 4px; }
+
+        /* 기타 스타일 유지 */
         .index-item, .stock-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 12px; background: #f8fafc; border-radius: 10px; font-size: 0.95rem; }
         .stock-item { border: 1px solid #e2e8f0; }
         .up { color: var(--red); font-weight: bold; }
         .down { color: var(--blue); font-weight: bold; }
         .btn-del { font-size: 0.9rem; color: #999; cursor: pointer; margin-left: 10px; padding: 5px; }
         .btn-del:hover { color: var(--red); font-weight: bold; }
-        .news-item { margin-bottom: 16px; padding: 16px; border-radius: 12px; border: 1px solid #f1f5f9; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
-        .news-item:hover { transform: translateY(-2px); border-color: var(--primary); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        .sentiment-bar { height: 4px; width: 100%; position: absolute; top: 0; left: 0; background: #eee; }
-        .sentiment-fill { height: 100%; }
-        .news-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; margin-top: 8px; }
-        .badge { font-size: 0.75rem; padding: 3px 8px; border-radius: 4px; font-weight: 700; color: white; }
         .input-group { margin-bottom: 15px; }
         input { width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; }
         .btn-primary { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
@@ -39,9 +57,7 @@
     <aside>
         <div class="card">
             <h3>📊 주요 지수</h3>
-            <div id="indices-list">
-                <div style="text-align:center; color:#999;">로딩중...</div>
-            </div>
+            <div id="indices-list"><div style="text-align:center; color:#999;">로딩중...</div></div>
         </div>
         <div class="card">
             <h3>⭐ 관심 종목 (Watchlist)</h3>
@@ -51,18 +67,17 @@
                 <button class="btn-primary btn-sm" onclick="addStock()">추가</button>
             </div>
             <p style="font-size: 0.75rem; color: #999; margin-top: 5px; line-height: 1.4;">
-                * 웬만한 종목은 <strong>한글 검색</strong>이 가능합니다.<br>
-                (삼성전자, 카카오, 에코프로, 테슬라 등)<br>
-                * 검색 안 되면 코드로 입력: 005930.KS
+                * 웬만한 종목은 <strong>한글 검색</strong> 가능<br>
+                * 검색 안 되면 코드 입력: 005930.KS
             </p>
         </div>
     </aside>
     <main>
         <div class="card">
-            <h3>🗞️ AI 뉴스 감성 분석</h3>
+            <h3>🗞️ AI 뉴스 감성 분석 <span style="font-size:0.8rem; color:#999; font-weight:normal; margin-left:10px;">(클릭하여 분석 보기)</span></h3>
             <div id="news-list">
                 <p style="text-align:center; padding: 20px; color: var(--gray);">
-                    🤖 AI가 뉴스를 분석하고 점수를 매기는 중...
+                    🤖 AI가 뉴스를 읽고 분석 중입니다...
                 </p>
             </div>
         </div>
@@ -85,34 +100,18 @@
         </div>
     </section>
 </div>
+
 <script>
     setInterval(() => document.getElementById('realtime-clock').innerText = new Date().toLocaleString(), 1000);
 
     const STOCK_MAP = {
-        '삼성전자': '005930.KS',
-        'SK하이닉스': '000660.KS',
-        'LG에너지솔루션': '373220.KS',
-        '삼성바이오로직스': '207940.KS',
-        '현대차': '005380.KS',
-        '기아': '000270.KS',
-        '셀트리온': '068270.KS',
-        'POSCO홀딩스': '005490.KS',
-        'NAVER': '035420.KS', '네이버': '035420.KS',
-        '카카오': '035720.KS',
-        '에코프로비엠': '247540.KQ',
-        '에코프로': '086520.KQ',
-        'HLB': '028300.KQ',
-        '엘앤에프': '066970.KQ',
-        '알테오젠': '196170.KQ',
-        '두산에너빌리티': '034020.KS',
-        '테슬라': 'TSLA',
-        '애플': 'AAPL',
-        '엔비디아': 'NVDA',
-        '마이크로소프트': 'MSFT', '마소': 'MSFT',
-        '구글': 'GOOGL',
-        '아마존': 'AMZN',
-        'SOXL': 'SOXL',
-        'TQQQ': 'TQQQ'
+        '삼성전자': '005930.KS', 'SK하이닉스': '000660.KS', 'LG에너지솔루션': '373220.KS',
+        '삼성바이오로직스': '207940.KS', '현대차': '005380.KS', '기아': '000270.KS',
+        '셀트리온': '068270.KS', 'POSCO홀딩스': '005490.KS', 'NAVER': '035420.KS',
+        '카카오': '035720.KS', '에코프로비엠': '247540.KQ', '에코프로': '086520.KQ',
+        'HLB': '028300.KQ', '엘앤에프': '066970.KQ', '알테오젠': '196170.KQ',
+        '테슬라': 'TSLA', '애플': 'AAPL', '엔비디아': 'NVDA', '마이크로소프트': 'MSFT',
+        '구글': 'GOOGL', '아마존': 'AMZN', 'SOXL': 'SOXL', 'TQQQ': 'TQQQ'
     };
 
     async function fetchIndices() {
@@ -120,20 +119,14 @@
             const res = await fetch('/api/indices');
             const data = await res.json();
             const list = document.getElementById('indices-list');
-            
             const items = [
-                { name: '코스피', ...data.kospi },
-                { name: '코스닥', ...data.kosdaq },
-                { name: '나스닥', ...data.nasdaq },
-                { name: '환율', ...data.exchange }
+                { name: '코스피', ...data.kospi }, { name: '코스닥', ...data.kosdaq },
+                { name: '나스닥', ...data.nasdaq }, { name: '환율', ...data.exchange }
             ];
-
             list.innerHTML = items.map(item => `
                 <div class="index-item">
                     <span>${item.name}</span>
-                    <span class="${item.isUp ? 'up' : 'down'}">
-                        ${item.price} ${item.isUp ? '▲' : '▼'} (${item.percent}%)
-                    </span>
+                    <span class="${item.isUp ? 'up' : 'down'}">${item.price} ${item.isUp ? '▲' : '▼'} (${item.percent}%)</span>
                 </div>
             `).join('');
         } catch(e) { console.error(e); }
@@ -143,40 +136,20 @@
 
     async function fetchWatchlist() {
         const container = document.getElementById('watchlist-container');
-        
-        if(myStocks.length === 0) {
-            container.innerHTML = "<div style='font-size:0.8rem; text-align:center;'>종목을 추가해보세요</div>";
-            return;
-        }
-        
+        if(myStocks.length === 0) { container.innerHTML = "<div style='font-size:0.8rem; text-align:center;'>종목을 추가해보세요</div>"; return; }
         container.innerHTML = "<div style='font-size:0.8rem; color:#999; text-align:center;'>시세 조회 중...</div>";
-
         try {
             const res = await fetch(`/api/stock?symbols=${myStocks.join(',')}`);
             let data = [];
-            
-            if (res.ok) {
-                data = await res.json();
-            }
-            
+            if (res.ok) data = await res.json();
             const displayData = myStocks.map(symbol => {
                 const found = data.find(item => item.symbol === symbol);
-                if (found) return found;
-                return { symbol: symbol, name: '로딩 실패', price: 0, change: 0, percent: 0, valid: false };
+                return found ? found : { symbol: symbol, name: '로딩 실패', price: 0, change: 0, percent: 0, valid: false };
             });
-
             container.innerHTML = displayData.map(stock => {
                 const isUp = stock.change > 0;
-                let priceDisplay = stock.price.toLocaleString() + "원";
-                let percentDisplay = `${isUp ? '+' : ''}${stock.percent.toFixed(2)}%`;
-                let colorClass = isUp ? 'up' : 'down';
-
-                if (!stock.valid || stock.price === 0) {
-                    priceDisplay = "<span style='color:red; font-size:0.7rem;'>조회 불가</span>";
-                    percentDisplay = "-";
-                    colorClass = "";
-                }
-
+                let priceDisplay = stock.price === 0 ? "<span style='color:red;'>조회 불가</span>" : stock.price.toLocaleString() + "원";
+                let percentDisplay = stock.price === 0 ? "-" : `${isUp ? '+' : ''}${stock.percent.toFixed(2)}%`;
                 return `
                 <div class="stock-item">
                     <div>
@@ -184,59 +157,44 @@
                         <div style="font-size:0.7rem; color:#999;">${stock.symbol}</div>
                     </div>
                     <div style="display:flex; align-items:center;">
-                        <span class="${colorClass}" style="font-weight:bold; margin-right:8px;">
-                            ${percentDisplay}
-                        </span>
-                        <span class="btn-del" onclick="removeStock('${stock.symbol}')" title="삭제">✕</span>
+                        <span class="${isUp ? 'up' : 'down'}" style="font-weight:bold; margin-right:8px;">${percentDisplay}</span>
+                        <span class="btn-del" onclick="removeStock('${stock.symbol}')">✕</span>
                     </div>
                 </div>`;
             }).join('');
-
-        } catch(e) { 
-            console.error(e); 
-            container.innerHTML = `<div style='font-size:0.8rem; color:red; text-align:center;'>서버 에러 발생</div>`;
-        }
+        } catch(e) { container.innerHTML = "에러 발생"; }
     }
 
     async function addStock() {
         const input = document.getElementById('new-stock-code');
         let val = input.value.trim();
-
-        if(!val) return alert("종목명이나 코드를 입력하세요.");
-
-        if (STOCK_MAP[val]) {
-            val = STOCK_MAP[val];
-        } else if (STOCK_MAP[val.toUpperCase()]) {
-            val = STOCK_MAP[val.toUpperCase()];
-        } else {
-            val = val.toUpperCase();
-        }
-
-        if(myStocks.includes(val)) return alert("이미 추가된 종목입니다.");
+        if(!val) return alert("입력해주세요.");
+        if (STOCK_MAP[val]) val = STOCK_MAP[val];
+        else if (STOCK_MAP[val.toUpperCase()]) val = STOCK_MAP[val.toUpperCase()];
+        else val = val.toUpperCase();
+        if(myStocks.includes(val)) return alert("이미 있습니다.");
         
-        const btn = document.querySelector('.btn-sm');
-        const originalText = btn.innerText;
-        btn.innerText = "⏳";
-        btn.disabled = true;
-
-        try {
-            myStocks.push(val);
-            localStorage.setItem('myStocks', JSON.stringify(myStocks));
-            await fetchWatchlist();
-            input.value = '';
-        } catch (e) {
-            alert("오류 발생");
-        } finally {
-            btn.innerText = originalText;
-            btn.disabled = false;
-        }
+        myStocks.push(val);
+        localStorage.setItem('myStocks', JSON.stringify(myStocks));
+        await fetchWatchlist();
+        input.value = '';
     }
 
     function removeStock(symbol) {
-        if(!confirm(`삭제하시겠습니까?`)) return;
+        if(!confirm("삭제하시겠습니까?")) return;
         myStocks = myStocks.filter(s => s !== symbol);
         localStorage.setItem('myStocks', JSON.stringify(myStocks));
         fetchWatchlist();
+    }
+
+    // [핵심] 뉴스 클릭 이벤트 처리 함수
+    function toggleNews(id) {
+        const el = document.getElementById(id);
+        if (el.style.display === 'block') {
+            el.style.display = 'none';
+        } else {
+            el.style.display = 'block';
+        }
     }
 
     async function fetchNews() {
@@ -245,19 +203,16 @@
             const res = await fetch('/api/news');
             const data = await res.json();
 
-            list.innerHTML = data.map(news => {
+            list.innerHTML = data.map((news, index) => {
                 let color = "#94a3b8"; 
                 let label = "중립";
                 let score = news.score || 50;
                 
-                if(news.sentiment.includes("호재")) {
-                    color = "#2563eb"; label = "호재";
-                } else if(news.sentiment.includes("악재")) {
-                    color = "#dc2626"; label = "악재";
-                }
+                if(news.sentiment.includes("호재")) { color = "#2563eb"; label = "호재"; } 
+                else if(news.sentiment.includes("악재")) { color = "#dc2626"; label = "악재"; }
 
                 return `
-                    <div class="news-item" onclick="window.open('${news.link}', '_blank')">
+                    <div class="news-item" onclick="toggleNews('reason-${index}')">
                         <div class="sentiment-bar">
                             <div class="sentiment-fill" style="width: ${score}%; background: ${color}; opacity: 0.3;"></div>
                         </div>
@@ -267,8 +222,13 @@
                         </div>
                         <div style="font-weight: bold; font-size: 1.05rem; margin-bottom: 5px;">${news.title}</div>
                         <div style="font-size: 0.9rem; color: #666;">${news.description}</div>
-                        <div style="margin-top:8px; font-size:0.75rem; color:${color}; font-weight:bold;">
-                            ${label === '호재' ? '📈 주가 상승 요인' : (label === '악재' ? '📉 주의 필요' : '👀 시장 관망세')}
+                        
+                        <div id="reason-${index}" class="ai-reason">
+                            <strong>💡 AI 분석 리포트</strong>
+                            ${news.reason || "상세 분석 내용을 불러오는 중입니다..."}
+                            <div style="margin-top:10px; font-size:0.8rem; text-align:right;">
+                                <a href="${news.link}" target="_blank" style="color:${color}; text-decoration:underline;">기사 원문 보기 →</a>
+                            </div>
                         </div>
                     </div>
                 `;
