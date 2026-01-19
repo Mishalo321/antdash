@@ -88,7 +88,6 @@
 <script>
     setInterval(() => document.getElementById('realtime-clock').innerText = new Date().toLocaleString(), 1000);
 
-    // [NEW] 한글 종목명 -> 코드 변환기 (자주 찾는 종목들)
     const STOCK_MAP = {
         '삼성전자': '005930.KS',
         'SK하이닉스': '000660.KS',
@@ -125,7 +124,7 @@
             const items = [
                 { name: '코스피', ...data.kospi },
                 { name: '코스닥', ...data.kosdaq },
-                { name: '나스닥', ...data.nasdaq }, // 나스닥 추가
+                { name: '나스닥', ...data.nasdaq },
                 { name: '환율', ...data.exchange }
             ];
 
@@ -201,19 +200,15 @@
 
     async function addStock() {
         const input = document.getElementById('new-stock-code');
-        let val = input.value.trim(); // 대문자 변환 전 원본
+        let val = input.value.trim();
 
         if(!val) return alert("종목명이나 코드를 입력하세요.");
 
-        // 1. 한글 종목명인지 확인하고 코드로 변환
-        // '삼성'이라고 쳐도 '삼성전자' 못찾는 문제를 방지하기 위해 정확히 일치하는지 확인
-        // (더 발전시키면 '삼성'만 쳐도 추천해줄 수 있지만 지금은 정확히 입력해야 함)
         if (STOCK_MAP[val]) {
             val = STOCK_MAP[val];
-        } else if (STOCK_MAP[val.toUpperCase()]) { // 영어 소문자 입력 대응 (tsla -> TSLA)
+        } else if (STOCK_MAP[val.toUpperCase()]) {
             val = STOCK_MAP[val.toUpperCase()];
         } else {
-            // 변환 실패하면 그냥 입력값 그대로 대문자로 사용 (코드라고 가정)
             val = val.toUpperCase();
         }
 
@@ -272,3 +267,31 @@
                         </div>
                         <div style="font-weight: bold; font-size: 1.05rem; margin-bottom: 5px;">${news.title}</div>
                         <div style="font-size: 0.9rem; color: #666;">${news.description}</div>
+                        <div style="margin-top:8px; font-size:0.75rem; color:${color}; font-weight:bold;">
+                            ${label === '호재' ? '📈 주가 상승 요인' : (label === '악재' ? '📉 주의 필요' : '👀 시장 관망세')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } catch(e) { console.error(e); }
+    }
+
+    function calculateAverage() {
+        const p1 = parseFloat(document.getElementById('p1').value) || 0;
+        const q1 = parseFloat(document.getElementById('q1').value) || 0;
+        const p2 = parseFloat(document.getElementById('p2').value) || 0;
+        const q2 = parseFloat(document.getElementById('q2').value) || 0;
+        if((p1*q1 + p2*q2) === 0) return;
+        const total = (p1*q1 + p2*q2) / (q1+q2);
+        document.getElementById('res-price').innerText = Math.round(total).toLocaleString();
+        document.getElementById('calc-result').style.display = 'block';
+    }
+
+    window.onload = function() {
+        fetchIndices();
+        fetchWatchlist();
+        fetchNews();
+    };
+</script>
+</body>
+</html>
