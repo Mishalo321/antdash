@@ -1,36 +1,50 @@
-// api/stock.js
 export default async function handler(req, res) {
-    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate'); // 1분 캐싱
+    // 1분간 캐싱 (너무 자주 요청하면 차단당함)
+    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate');
 
-    // 프론트엔드에서 ?symbols=005930.KS,000660.KS 형태로 요청이 옴
     const { symbols } = req.query;
 
+    // 요청한 종목이 없으면 빈 배열 반환
     if (!symbols) {
-        return res.status(400).json({ error: '종목 코드가 필요합니다.' });
+        return res.status(200).json([]);
     }
 
     try {
-        // 야후 파이낸스에서 여러 종목 정보를 한 번에 가져옴
         const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}`;
-        const yahooRes = await fetch(url);
+        
+        // ⚠️ 핵심 수정: 브라우저인 척 위장하는 헤더(User-Agent) 추가
+        const yahooRes = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+        });
+
+        if (!yahooRes.ok) {
+            throw new Error(`Yahoo API Error: ${yahooRes.status}`);
+        }
+
         const data = await yahooRes.json();
         
+        // 데이터가 없거나 구조가 이상할 경우 방어
         if (!data.quoteResponse || !data.quoteResponse.result) {
+            console.error("Yahoo response invalid:", JSON.stringify(data));
             return res.status(500).json({ error: '데이터 형식 오류' });
         }
 
         const results = data.quoteResponse.result.map(item => ({
             symbol: item.symbol,
-            name: item.shortName || item.longName, // 한글 이름이 없으면 영문 이름 사용
-            price: item.regularMarketPrice,
-            change: item.regularMarketChange,
-            percent: item.regularMarketChangePercent
+            // 이름이 없으면 티커(Symbol)로 대체
+            name: item.shortName || item.longName || item.symbol, 
+            // 장 중에는 regularMarketPrice, 장 마감 후에는 postMarketPrice 사용 시도
+            price: item.regularMarketPrice || item.postMarketPrice || 0,
+            change: item.regularMarketChange || 0,
+            percent: item.regularMarketChangePercent || 0
         }));
 
         res.status(200).json(results);
 
     } catch (error) {
-        console.error(error);
+        console.error("Stock Fetch Error:", error);
         res.status(500).json({ error: '주가 정보를 가져오는데 실패했습니다.' });
     }
 }
