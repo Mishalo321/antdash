@@ -6,7 +6,7 @@
     <title>AntDash | AI 주식 대시보드</title>
     <style>
         :root { --bg: #f4f7fa; --card: #ffffff; --primary: #2962ff; --text: #1e293b; --red: #f44336; --blue: #2196f3; --gray: #64748b; }
-        body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 0; }
+        body { font-family: 'Pretendard', sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 0; }
         
         header { background: #0f172a; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .container { display: grid; grid-template-columns: 280px 1fr 320px; gap: 24px; padding: 24px; max-width: 1500px; margin: auto; }
@@ -14,23 +14,26 @@
         .card { background: var(--card); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 24px; border: 1px solid rgba(0,0,0,0.03); }
         h3 { margin-top: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; color: #334155; }
 
-        /* 지수 스타일 */
-        .index-item { display: flex; justify-content: space-between; margin-bottom: 18px; padding: 12px; background: #f8fafc; border-radius: 10px; font-size: 0.95rem; }
-        
-        /* 뉴스 스타일 */
-        .news-item { margin-bottom: 16px; padding: 16px; border-radius: 12px; border: 1px solid #f1f5f9; cursor: pointer; transition: all 0.2s; }
-        .news-item:hover { background: #f8fafc; transform: translateY(-2px); border-color: var(--primary); }
-        .news-tag { font-size: 0.75rem; padding: 4px 10px; border-radius: 20px; font-weight: 600; text-transform: uppercase; }
-        .news-title { font-weight: 700; margin: 10px 0; font-size: 1.05rem; line-height: 1.4; }
-        .news-desc { font-size: 0.9rem; color: #64748b; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        /* 지수 & 관심종목 스타일 */
+        .index-item, .stock-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 12px; background: #f8fafc; border-radius: 10px; font-size: 0.95rem; }
+        .stock-item { border: 1px solid #e2e8f0; }
+        .up { color: var(--red); font-weight: bold; }
+        .down { color: var(--blue); font-weight: bold; }
+        .btn-del { font-size: 0.8rem; color: #aaa; cursor: pointer; margin-left: 10px; }
 
-        /* 계산기 스타일 */
+        /* 뉴스 스타일 (업그레이드) */
+        .news-item { margin-bottom: 16px; padding: 16px; border-radius: 12px; border: 1px solid #f1f5f9; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
+        .news-item:hover { transform: translateY(-2px); border-color: var(--primary); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .sentiment-bar { height: 4px; width: 100%; position: absolute; top: 0; left: 0; background: #eee; }
+        .sentiment-fill { height: 100%; }
+        .news-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; margin-top: 8px; }
+        .badge { font-size: 0.75rem; padding: 3px 8px; border-radius: 4px; font-weight: 700; color: white; }
+
+        /* 입력 폼 스타일 */
         .input-group { margin-bottom: 15px; }
-        label { font-size: 0.85rem; color: var(--gray); font-weight: 600; }
-        input { width: 100%; padding: 12px; margin-top: 6px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 1rem; }
-        .btn-calc { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem; transition: 0.2s; }
-        .btn-calc:hover { background: #1e40af; }
-        .calc-result { margin-top: 20px; padding: 15px; background: #f1f5f9; border-radius: 8px; display: none; }
+        input { width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; }
+        .btn-primary { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-sm { width: auto; padding: 8px 12px; font-size: 0.9rem; margin-top: 5px; }
 
         @media (max-width: 1100px) { .container { grid-template-columns: 1fr; } .container aside, .container section { display: none; } }
     </style>
@@ -38,48 +41,41 @@
 <body>
 
 <header>
-    <div style="font-size: 1.5rem; font-weight: 900; letter-spacing: -0.5px;">🐜 AntDash <span style="font-weight: 300; font-size: 0.9rem; margin-left: 10px; opacity: 0.7;">Beta</span></div>
-    <div id="realtime-clock" style="font-family: monospace; font-size: 1rem;">--:--:--</div>
+    <div style="font-size: 1.5rem; font-weight: 900;">🐜 AntDash <span style="font-size: 0.9rem; opacity: 0.7;">Pro</span></div>
+    <div id="realtime-clock" style="font-family: monospace;">--:--:--</div>
 </header>
 
 <div class="container">
     <aside>
         <div class="card">
-            <h3>📊 주요 지수 (실시간)</h3>
-            <div class="index-item">
-                <span>코스피</span> 
-                <span id="kospi-val" style="font-weight:bold; color:#999;">로딩중...</span>
-            </div>
-            <div class="index-item">
-                <span>코스닥</span> 
-                <span id="kosdaq-val" style="font-weight:bold; color:#999;">로딩중...</span>
-            </div>
-            <div class="index-item">
-                <span>나스닥 선물</span> 
-                <span id="nasdaq-val" style="font-weight:bold; color:#999;">로딩중...</span>
-            </div>
-            <div class="index-item">
-                <span>원/달러 환율</span> 
-                <span id="exchange-val" style="font-weight:bold; color:#999;">로딩중...</span>
+            <h3>📊 주요 지수</h3>
+            <div id="indices-list">
+                <div style="text-align:center; color:#999;">로딩중...</div>
             </div>
         </div>
+
         <div class="card">
-            <h3>🔥 오늘의 테마</h3>
-            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                <span style="background: #eff6ff; color: #1e40af; padding: 5px 10px; border-radius: 6px; font-size: 0.85rem;">#반도체</span>
-                <span style="background: #fef2f2; color: #991b1b; padding: 5px 10px; border-radius: 6px; font-size: 0.85rem;">#AI</span>
-                <span style="background: #f0fdf4; color: #166534; padding: 5px 10px; border-radius: 6px; font-size: 0.85rem;">#2차전지</span>
+            <h3>⭐ 관심 종목 (Watchlist)</h3>
+            <div id="watchlist-container">
+                </div>
+            <div style="margin-top: 15px; display: flex; gap: 5px;">
+                <input type="text" id="new-stock-code" placeholder="종목코드 (예: 005930.KS)">
+                <button class="btn-primary btn-sm" onclick="addStock()">추가</button>
             </div>
+            <p style="font-size: 0.75rem; color: #999; margin-top: 5px;">
+                * 코스피: .KS / 코스닥: .KQ<br>
+                예) 삼성전자: 005930.KS<br>
+                예) 에코프로: 086520.KQ
+            </p>
         </div>
     </aside>
 
     <main>
         <div class="card">
-            <h3>🗞️ AI 뉴스 분석 (실시간)</h3>
+            <h3>🗞️ AI 뉴스 감성 분석</h3>
             <div id="news-list">
                 <p style="text-align:center; padding: 20px; color: var(--gray);">
-                    🤖 AI가 최신 뉴스를 읽고 분석 중입니다...<br>
-                    (약 3~5초 소요됩니다)
+                    🤖 AI가 뉴스를 분석하고 점수를 매기는 중...
                 </p>
             </div>
         </div>
@@ -89,123 +85,155 @@
         <div class="card">
             <h3>🧮 물타기 계산기</h3>
             <div class="input-group">
-                <label>기존 평단/수량</label>
-                <div style="display: flex; gap: 5px;">
-                    <input type="number" id="p1" placeholder="단가">
-                    <input type="number" id="q1" placeholder="수량">
-                </div>
+                <input type="number" id="p1" placeholder="기존 평단가">
+                <input type="number" id="q1" placeholder="보유 수량" style="margin-top:5px;">
             </div>
             <div class="input-group">
-                <label>추가 매수 단가/수량</label>
-                <div style="display: flex; gap: 5px;">
-                    <input type="number" id="p2" placeholder="단가">
-                    <input type="number" id="q2" placeholder="수량">
-                </div>
+                <input type="number" id="p2" placeholder="추가 매수 평단가">
+                <input type="number" id="q2" placeholder="추가 매수 수량" style="margin-top:5px;">
             </div>
-            <button class="btn-calc" onclick="calculateAverage()">평단가 계산하기</button>
-            <div id="calc-result" class="calc-result">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>최종 평단:</span><strong id="res-price">0원</strong></div>
-                <div style="display: flex; justify-content: space-between;"><span>최종 수량:</span><strong id="res-qty">0주</strong></div>
+            <button class="btn-primary" onclick="calculateAverage()">계산하기</button>
+            <div id="calc-result" style="margin-top: 15px; padding: 10px; background: #f8fafc; border-radius: 8px; display: none;">
+                <strong>최종 평단: <span id="res-price">0</span>원</strong>
             </div>
         </div>
     </section>
 </div>
 
 <script>
-    // 시계 동작
-    setInterval(() => {
-        document.getElementById('realtime-clock').innerText = new Date().toLocaleString();
-    }, 1000);
+    // 1. 시계
+    setInterval(() => document.getElementById('realtime-clock').innerText = new Date().toLocaleString(), 1000);
 
-    // ==========================================
-    // 1. 뉴스 데이터 가져오기 (api/news.js 호출)
-    // ==========================================
-    async function fetchNews() {
-        const list = document.getElementById('news-list');
-        try {
-            const response = await fetch('/api/news');
-            if (!response.ok) throw new Error('Network response was not ok');
-            const newsData = await response.json();
-
-            list.innerHTML = newsData.map(news => {
-                let color = "#64748b"; 
-                let icon = "⚪";
-                let label = news.sentiment || "중립";
-                
-                if(label.includes("호재")) { color = "#2563eb"; icon = "🔵"; }
-                else if(label.includes("악재")) { color = "#dc2626"; icon = "🔴"; }
-
-                return `
-                    <div class="news-item" onclick="window.open('${news.link}', '_blank')">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span class="news-tag" style="background: ${color}; color: white;">AI: ${label} ${icon}</span>
-                            <span style="font-size: 0.8rem; color: var(--gray);">${news.date}</span>
-                        </div>
-                        <div class="news-title">${news.title}</div>
-                        <div class="news-desc">${news.description}</div>
-                    </div>
-                `;
-            }).join('');
-        } catch (e) {
-            console.error(e);
-            list.innerHTML = '<p style="text-align:center; color:red;">뉴스를 불러오는데 실패했습니다.</p>';
-        }
-    }
-
-    // ==========================================
-    // 2. 주요 지수 가져오기 (api/indices.js 호출) - [신규]
-    // ==========================================
+    // 2. 주요 지수 로딩
     async function fetchIndices() {
         try {
             const res = await fetch('/api/indices');
-            if(!res.ok) throw new Error("지수 API 호출 실패");
+            const data = await res.json();
+            const list = document.getElementById('indices-list');
+            
+            // 데이터 매핑 (코스피, 코스닥 등)
+            const items = [
+                { name: '코스피', ...data.kospi },
+                { name: '코스닥', ...data.kosdaq },
+                { name: '환율', ...data.exchange }
+            ];
+
+            list.innerHTML = items.map(item => `
+                <div class="index-item">
+                    <span>${item.name}</span>
+                    <span class="${item.isUp ? 'up' : 'down'}">
+                        ${item.price} ${item.isUp ? '▲' : '▼'} (${item.percent}%)
+                    </span>
+                </div>
+            `).join('');
+        } catch(e) { console.error(e); }
+    }
+
+    // 3. [NEW] 관심 종목 (Watchlist) 로직
+    let myStocks = JSON.parse(localStorage.getItem('myStocks')) || ['005930.KS', '000660.KS']; // 기본값: 삼성전자, 하이닉스
+
+    async function fetchWatchlist() {
+        if(myStocks.length === 0) return;
+        const container = document.getElementById('watchlist-container');
+        
+        try {
+            // 새로 만든 api/stock.js 호출
+            const res = await fetch(`/api/stock?symbols=${myStocks.join(',')}`);
             const data = await res.json();
 
-            updateIndex('kospi-val', data.kospi);
-            updateIndex('kosdaq-val', data.kosdaq);
-            updateIndex('nasdaq-val', data.nasdaq);
-            updateIndex('exchange-val', data.exchange);
-
-        } catch (e) {
-            console.error("지수 로딩 실패", e);
-            // 에러 시 '실패'라고 표시
-            ['kospi-val', 'kosdaq-val', 'nasdaq-val', 'exchange-val'].forEach(id => {
-                document.getElementById(id).innerText = "로딩 실패";
-            });
-        }
+            container.innerHTML = data.map(stock => {
+                const isUp = stock.change > 0;
+                return `
+                <div class="stock-item">
+                    <div>
+                        <div style="font-weight:bold; font-size:0.9rem;">${stock.symbol}</div>
+                        <div style="font-size:0.8rem; color:#666;">${stock.price.toLocaleString()}원</div>
+                    </div>
+                    <div style="display:flex; align-items:center;">
+                        <span class="${isUp ? 'up' : 'down'}" style="font-weight:bold;">
+                            ${isUp ? '+' : ''}${stock.percent.toFixed(2)}%
+                        </span>
+                        <span class="btn-del" onclick="removeStock('${stock.symbol}')">✕</span>
+                    </div>
+                </div>`;
+            }).join('');
+        } catch(e) { console.error(e); }
     }
 
-    function updateIndex(elementId, info) {
-        if(!info) return;
-        const el = document.getElementById(elementId);
-        const icon = info.isUp ? '▲' : '▼';
-        const color = info.isUp ? '#f44336' : '#2196f3'; // 상승 빨강, 하락 파랑
+    function addStock() {
+        const code = document.getElementById('new-stock-code').value.toUpperCase().trim();
+        if(!code) return alert("종목 코드를 입력하세요 (예: 005930.KS)");
+        if(myStocks.includes(code)) return alert("이미 추가된 종목입니다.");
         
-        el.innerText = `${info.price} ${icon} (${info.percent}%)`;
-        el.style.color = color;
+        myStocks.push(code);
+        localStorage.setItem('myStocks', JSON.stringify(myStocks)); // 저장
+        document.getElementById('new-stock-code').value = '';
+        fetchWatchlist();
     }
 
-    // ==========================================
-    // 3. 물타기 계산기 로직
-    // ==========================================
+    function removeStock(symbol) {
+        myStocks = myStocks.filter(s => s !== symbol);
+        localStorage.setItem('myStocks', JSON.stringify(myStocks)); // 저장
+        fetchWatchlist();
+        if(myStocks.length === 0) document.getElementById('watchlist-container').innerHTML = "<div style='font-size:0.8rem; text-align:center;'>종목을 추가해보세요</div>";
+    }
+
+    // 4. [NEW] AI 뉴스 분석 (점수판)
+    async function fetchNews() {
+        const list = document.getElementById('news-list');
+        try {
+            const res = await fetch('/api/news');
+            const data = await res.json();
+
+            list.innerHTML = data.map(news => {
+                let color = "#94a3b8"; 
+                let label = "중립";
+                let score = news.score || 50;
+                
+                // 점수 기반 색상 및 라벨
+                if(news.sentiment.includes("호재")) {
+                    color = "#2563eb"; label = "호재";
+                } else if(news.sentiment.includes("악재")) {
+                    color = "#dc2626"; label = "악재";
+                }
+
+                return `
+                    <div class="news-item" onclick="window.open('${news.link}', '_blank')">
+                        <div class="sentiment-bar">
+                            <div class="sentiment-fill" style="width: ${score}%; background: ${color}; opacity: 0.3;"></div>
+                        </div>
+                        <div class="news-header">
+                            <span class="badge" style="background:${color};">${label} ${score}점</span>
+                            <span style="font-size: 0.8rem; color: #999;">${news.date}</span>
+                        </div>
+                        <div style="font-weight: bold; font-size: 1.05rem; margin-bottom: 5px;">${news.title}</div>
+                        <div style="font-size: 0.9rem; color: #666;">${news.description}</div>
+                        <div style="margin-top:8px; font-size:0.75rem; color:${color}; font-weight:bold;">
+                            ${label === '호재' ? '📈 주가 상승 요인' : (label === '악재' ? '📉 주의 필요' : '👀 시장 관망세')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } catch(e) { console.error(e); }
+    }
+
+    // 물타기 계산기
     function calculateAverage() {
         const p1 = parseFloat(document.getElementById('p1').value) || 0;
         const q1 = parseFloat(document.getElementById('q1').value) || 0;
         const p2 = parseFloat(document.getElementById('p2').value) || 0;
         const q2 = parseFloat(document.getElementById('q2').value) || 0;
-        if((p1*q1 + p2*q2) === 0) return alert("값을 입력해주세요!");
-        const totalAmt = (p1 * q1) + (p2 * q2);
-        const totalQty = q1 + q2;
-        const avg = totalAmt / totalQty;
-        document.getElementById('res-price').innerText = Math.round(avg).toLocaleString() + "원";
-        document.getElementById('res-qty').innerText = totalQty.toLocaleString() + "주";
+        if((p1*q1 + p2*q2) === 0) return;
+        const total = (p1*q1 + p2*q2) / (q1+q2);
+        document.getElementById('res-price').innerText = Math.round(total).toLocaleString();
         document.getElementById('calc-result').style.display = 'block';
     }
 
-    // 사이트 켜지면 실행
+    // 초기 실행
     window.onload = function() {
-        fetchNews();    // 뉴스 실행
-        fetchIndices(); // 지수 실행
+        fetchIndices();
+        fetchWatchlist();
+        fetchNews();
     };
 </script>
 </body>
