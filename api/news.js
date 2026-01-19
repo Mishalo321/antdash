@@ -1,6 +1,5 @@
-// api/news.js
 export default async function handler(req, res) {
-    res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate'); // 10분 캐싱
+    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate'); // 1분 캐싱
 
     const NAVER_ID = process.env.NAVER_ID;
     const NAVER_SECRET = process.env.NAVER_SECRET;
@@ -18,7 +17,7 @@ export default async function handler(req, res) {
 
         const titles = newsItems.map((item, index) => `${index + 1}. ${item.title.replace(/<[^>]*>?/g, '')}`).join("\n");
 
-        // 프롬프트 수정: 점수(score) 요청 추가
+        // [수정됨] 프롬프트 업그레이드: 'reason'(분석 내용) 추가 요청
         const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -30,7 +29,7 @@ export default async function handler(req, res) {
                 messages: [
                     {
                         role: "system", 
-                        content: "Analyze stock news. Return JSON. 'news' array: { 'sentiment': '호재'|'악재'|'중립', 'score': integer(0-100, higher is better/more intense) }."
+                        content: "You are a stock market analyst. Analyze the news titles. Return JSON object with 'news' array containing: 'sentiment' (one of: '호재', '악재', '중립'), 'score' (integer 0-100), and 'reason' (a short, insightful explanation in Korean why you gave that score, within 1-2 sentences)."
                     },
                     { role: "user", content: titles }
                 ],
@@ -48,10 +47,11 @@ export default async function handler(req, res) {
             return {
                 title: item.title.replace(/<[^>]*>?/g, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
                 link: item.link,
-                description: item.description.replace(/<[^>]*>?/g, '').slice(0, 60) + "...",
+                description: item.description.replace(/<[^>]*>?/g, '').slice(0, 80) + "...", // 설명 좀 더 길게
                 date: new Date(item.pubDate).toLocaleTimeString('ko-KR', {hour: '2-digit', minute:'2-digit'}),
                 sentiment: sentiments[index]?.sentiment || "중립",
-                score: sentiments[index]?.score || 50 // 점수가 없으면 중간값 50
+                score: sentiments[index]?.score || 50,
+                reason: sentiments[index]?.reason || "분석 내용이 없습니다." // AI의 분석 이유
             };
         });
 
