@@ -1,78 +1,49 @@
+// api/indices.js
+
 export default async function handler(req, res) {
+    // 1. 캐싱 설정 (1분마다 갱신) - 너무 자주 부르면 야후가 차단할 수 있음
     res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate');
 
-    const headers = {
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
-        'Referer': 'https://m.stock.naver.com/'
-    };
-
+    // 2. 야후 파이낸스에서 가져올 지수들의 코드 (심볼)
+    // ^KS11: 코스피, ^KQ11: 코스닥, NQ=F: 나스닥 선물, KRW=X: 원달러 환율
+    const symbols = ['^KS11', '^KQ11', 'NQ=F', 'KRW=X'];
+    
     try {
-        // 주소를 모두 m.stock.naver.com 모바일 전용으로 통일 (가장 차단이 덜함)
-        const urls = [
-            'https://m.stock.naver.com/api/index/KOSPI/basic',
-            'https://m.stock.naver.com/api/index/KOSDAQ/basic',
-            'https://m.stock.naver.com/api/index/.IXIC/basic', // 나스닥도 모바일 주소로 변경
-            'https://m.stock.naver.com/front-api/marketIndex/productDetail?category=exchange&reutersCode=FX_USDKRW'
-        ];
+        // 3. 4개 지수를 한번에 요청 (Promise.all 사용)
+        const requests = symbols.map(symbol => 
+            fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`)
+            .then(res => res.json())
+        );
 
-        const fetchWithFallback = async (url) => {
-            try {
-                const r = await fetch(url, { headers });
-                if (!r.ok) return null;
-                return await r.json();
-            } catch (e) {
-                return null;
-            }
-        };
+        const responses = await Promise.all(requests);
 
-        const responses = await Promise.all(urls.map(url => fetchWithFallback(url)));
-
-        const parseIndex = (data, name) => {
-            if (!data) return { price: "0.00", percent: "0.00", isUp: true }; // 데이터 없으면 0.00 처리
-
-            let info = data;
-            // 환율 데이터(배열) 처리
-            if (Array.isArray(data) && data.length > 0) info = data[0]; 
-            else if (data.result && Array.isArray(data.result)) info = data.result[0];
-            
-            // 데이터가 비었거나 구조가 다를 경우 방어
-            if (!info || !info.closePrice) return { price: "0.00", percent: "0.00", isUp: true };
-
-            const price = parseFloat(info.closePrice.replace(/,/g, ''));
-            
-            // 등락폭/등락률 필드명이 지수마다 다를 수 있어 체크
-            const changeStr = info.compareToPreviousClosePrice || info.fluctuations || "0";
-            const percentStr = info.fluctuationsRatio || info.fluctuationsRate || "0";
-            
-            const change = parseFloat(changeStr.replace(/,/g, ''));
-            const percent = parseFloat(percentStr.replace(/,/g, ''));
-            
-            // 네이버는 하락이어도 compareToPreviousClosePrice가 양수로 오는 경우가 있음
-            // fluctuationsRatio가 마이너스면 isUp = false
-            const isUp = percentStr.includes('-') ? false : true;
+        // 4. 데이터 보기 좋게 정리
+        const results = responses.map((data, index) => {
+            const meta = data.chart.result[0].meta;
+            const price = meta.regularMarketPrice;      // 현재가
+            const prevClose = meta.chartPreviousClose;  // 전일 종가 (등락 계산용)
+            const change = price - prevClose;           // 등락폭
+            const percent = (change / prevClose) * 100; // 등락률
 
             return {
-                price: price.toLocaleString(undefined, {maximumFractionDigits: 2}),
+                symbol: symbols[index],
+                price: price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}),
+                change: change,
                 percent: percent.toFixed(2),
-                isUp: isUp
+                isUp: change > 0 // 상승 여부 (빨강/파랑 색깔 결정용)
             };
-        };
-
-        res.status(200).json({
-            kospi: parseIndex(responses[0], 'KOSPI'),
-            kosdaq: parseIndex(responses[1], 'KOSDAQ'),
-            nasdaq: parseIndex(responses[2], 'NASDAQ'),
-            exchange: parseIndex(responses[3], 'USD')
         });
 
-    } catch (e) {
-        console.error("Indices Error:", e);
-        // 전체 에러 시에도 빈 값 반환해서 프론트엔드 undefined 방지
+        // 5. 결과 반환 { kospi: {...}, kosdaq: {...}, ... }
         res.status(200).json({
-            kospi: { price: "-", percent: "0", isUp: true },
-            kosdaq: { price: "-", percent: "0", isUp: true },
-            nasdaq: { price: "-", percent: "0", isUp: true },
-            exchange: { price: "-", percent: "0", isUp: true }
+            kospi: results[0],
+            kosdaq: results[1],
+            nasdaq: results[2],
+            exchange: results[3]
         });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: '데이터를 가져오지 못했습니다.' });
     }
 }
