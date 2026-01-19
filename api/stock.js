@@ -7,27 +7,33 @@ export default async function handler(req, res) {
     const symbolList = symbols.split(',');
     const results = [];
 
-    // 🛡️ 네이버 차단 방지용 가짜 신분증 (User-Agent)
+    // 🛡️ 핵심: 네이버 모바일 웹사이트인 척 위장하는 헤더
     const headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
+        'Referer': 'https://m.stock.naver.com/',
+        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
     };
 
-    // 하나씩 처리 (Promise.all로 병렬 처리하면 더 빠름)
     await Promise.all(symbolList.map(async (rawSymbol) => {
         let code = rawSymbol.trim();
-        // 점(.) 뒤에 있는 .KS, .KQ 제거
-        if (code.includes('.')) code = code.split('.')[0];
+        if (code.includes('.')) code = code.split('.')[0]; // .KS 떼기
 
         try {
-            // 네이버 주식 API 호출
+            // 네이버 모바일 API
             const url = `https://m.stock.naver.com/api/stock/${code}/basic`;
-            const response = await fetch(url, { headers });
             
-            if (!response.ok) throw new Error('Network Err');
+            // 타임아웃 3초 설정 (너무 오래 걸리면 포기)
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 3000);
+            
+            const response = await fetch(url, { headers, signal: controller.signal });
+            clearTimeout(timeout);
+
+            if (!response.ok) throw new Error('Blocked or Error');
             
             const data = await response.json();
             
-            // 데이터 파싱
+            // 가격 정보 파싱
             const price = parseInt(data.closePrice.replace(/,/g, '')); 
             const prevPrice = parseInt(data.prevClosePrice.replace(/,/g, ''));
             const change = price - prevPrice;
@@ -42,15 +48,15 @@ export default async function handler(req, res) {
                 valid: true
             });
         } catch (error) {
-            console.error(`Error fetching ${rawSymbol}:`, error);
-            // ⚠️ 에러가 나도 "에러 났다"는 데이터를 넣어줌 (그래야 화면에서 삭제 가능)
+            console.error(`Fetch failed for ${code}:`, error);
+            // 에러 나도 valid: false로 데이터 반환 (화면에서 삭제 가능하게)
             results.push({
                 symbol: rawSymbol,
-                name: "조회 실패",
+                name: "조회 불가",
                 price: 0,
                 change: 0,
                 percent: 0,
-                valid: false // 실패 표시
+                valid: false
             });
         }
     }));
